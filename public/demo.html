@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kehler Realty - Luxury Homes</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        header {
+            background: #fff;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1a365d;
+        }
+
+        .hero {
+            background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1920&q=80');
+            background-size: cover;
+            background-position: center;
+            height: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: white;
+        }
+
+        .hero-content h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .hero-content p {
+            font-size: 20px;
+            margin-bottom: 30px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            font-size: 18px;
+            border-radius: 30px;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+        }
+
+        .features {
+            padding: 80px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+        }
+
+        .feature-card {
+            padding: 30px;
+            border-radius: 12px;
+            background: #f8fafc;
+            text-align: center;
+        }
+
+        /* Widget Trigger Styles */
+        .holiday-trigger-btn {
+            background: linear-gradient(135deg, #ef4444, #22c55e);
+            color: white;
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+        }
+
+        .holiday-trigger-btn:hover {
+            transform: scale(1.05);
+        }
+    </style>
+
+    <!-- 
+      1. INCLUDE THE WIDGET CSS 
+      (Corrected path for Vercel deployment)
+    -->
+    <link rel="stylesheet" href="/assets/widget.css">
+</head>
+
+<body>
+
+    <header>
+        <div class="logo">Kehler Realty</div>
+        <nav>
+            <a href="#" style="margin-right: 20px; text-decoration: none; color: #666;">Buy</a>
+            <a href="#" style="margin-right: 20px; text-decoration: none; color: #666;">Sell</a>
+            <a href="#" style="text-decoration: none; color: #666;">Agents</a>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Find Your Dream Home This Winter</h1>
+            <p>Experience luxury living in the heart of the city. Schedule a tour today or preview how your new home
+                could look for the holidays.</p>
+
+            <!-- 
+              2. ADD THE TRIGGER CLASS TO ANY BUTTON
+            -->
+            <button class="btn holiday-trigger-btn holiday-light-trigger">
+                🎄 Preview Holiday Lights
+            </button>
+        </div>
+    </section>
+
+    <section class="features">
+        <div class="feature-card">
+            <h3>Modern Architecture</h3>
+            <p>Designed by world-renowned architects with attention to every detail.</p>
+        </div>
+        <div class="feature-card">
+            <h3>Smart Home Ready</h3>
+            <p>Integrated with the latest smart home technology for your convenience.</p>
+        </div>
+        <div class="feature-card">
+            <h3>Prime Location</h3>
+            <p>Located in the most exclusive neighborhoods with easy access to amenities.</p>
+        </div>
+    </section>
+
+    <!-- 
+      3. INCLUDE THE WIDGET SCRIPT
+      (Corrected path for Vercel deployment)
+    -->
+    <script type="module" src="/assets/widget.js"></script>
+
+</body>
+
+</html>
