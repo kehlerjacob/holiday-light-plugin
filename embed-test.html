@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Holiday Light Widget Test</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 { margin-top: 0; }
+    </style>
+    
+    <!-- Widget CSS -->
+    <link rel="stylesheet" href="./dist/assets/widget.css">
+</head>
+<body>
+
+    <div class="container">
+        <h1>My Awesome Website</h1>
+        <p>This is an example of a regular website content.</p>
+        <p>Below is the Holiday Light Preview Widget embedded:</p>
+        
+        <!-- Widget Container -->
+        <div id="holiday-light-widget-root"></div>
+        
+    </div>
+
+    <!-- Widget JS -->
+    <script type="module" src="./dist/assets/widget.js"></script>
+
+</body>
+</html>
