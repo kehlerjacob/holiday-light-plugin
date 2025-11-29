@@ -1,8 +1,8 @@
 {
     "rewrites": [
         {
-            "source": "/demo.html",
-            "destination": "/demo.html"
+            "buildCommand": "npm run build",
+            "outputDirectory": "dist"
         }
     ]
 }
