@@ -1,15 +1,16 @@
+
 import React, { useState } from 'react';
 import ImageUploader from './components/ImageUploader';
 import LightSelector from './components/LightSelector';
 import PreviewCanvas from './components/PreviewCanvas';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 
-function App() {
+function App({ onClose }) {
   const [image, setImage] = useState(null);
   const [selectedLight, setSelectedLight] = useState(null);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50 selection:bg-blue-500/30">
+    <div className="fixed inset-0 z-[9999] bg-slate-950/95 backdrop-blur-sm overflow-y-auto">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -21,6 +22,12 @@ function App() {
               HolidayLights
             </h1>
           </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+          >
+            <X size={24} />
+          </button>
         </div>
       </header>
 
@@ -29,7 +36,7 @@ function App() {
         {!image ? (
           <div className="text-center space-y-8 animate-fade-in">
             <div className="space-y-4 max-w-2xl mx-auto">
-              <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
+              <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white">
                 Preview Christmas Lights <br />
                 <span className="text-blue-500">On Your Home</span>
               </h2>
