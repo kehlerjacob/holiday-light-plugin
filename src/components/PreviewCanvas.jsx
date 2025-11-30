@@ -1,56 +1,140 @@
 import React, { useRef, useState, useEffect } from 'react';
 
 // C9 Bulb Component - Inverted (Socket at top)
-const C9Bulb = ({ color, glow }) => (
-    <svg width="16" height="24" viewBox="0 0 24 36" style={{ overflow: 'visible' }}>
-        <defs>
-            <radialGradient id={`bulb-gradient-${color}`} cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
-                <stop offset="0%" stopColor="#fff" stopOpacity="0.9" />
-                <stop offset="40%" stopColor={color} stopOpacity="0.8" />
-                <stop offset="100%" stopColor={color} stopOpacity="0.4" />
-            </radialGradient>
-            <filter id={`glow-${color}`} x="-100%" y="-100%" width="300%" height="300%">
-                <feGaussianBlur stdDeviation="6" result="coloredBlur" />
-                <feMerge>
-                    <feMergeNode in="coloredBlur" />
-                    <feMergeNode in="SourceGraphic" />
-                </feMerge>
-            </filter>
-        </defs>
+const C9Bulb = ({ color, glow }) => {
+    // Sanitize color for ID use (remove #)
+    const safeColor = color.replace('#', '');
 
-        {/* Glow Effect */}
-        <circle cx="12" cy="22" r="16" fill={glow} filter={`url(#glow-${color})`} opacity="0.6" />
+    return (
+        <svg width="16" height="24" viewBox="0 0 24 36" style={{ overflow: 'visible' }}>
+            <defs>
+                <radialGradient id={`bulb-gradient-${safeColor}`} cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                    <stop offset="0%" stopColor="#fff" stopOpacity="0.9" />
+                    <stop offset="40%" stopColor={color} stopOpacity="0.8" />
+                    <stop offset="100%" stopColor={color} stopOpacity="0.4" />
+                </radialGradient>
+                <filter id={`glow-${safeColor}`} x="-100%" y="-100%" width="300%" height="300%">
+                    <feGaussianBlur stdDeviation="6" result="coloredBlur" />
+                    <feMerge>
+                        <feMergeNode in="coloredBlur" />
+                        <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                </filter>
+            </defs>
 
-        {/* Socket Base (At Top) */}
-        <rect x="8" y="0" width="8" height="6" rx="1" fill="#1a472a" />
-        <path d="M8 6 L16 6 L15 10 L9 10 Z" fill="#0f2b19" />
+            {/* Glow Effect */}
+            <circle cx="12" cy="22" r="16" fill={glow} filter={`url(#glow-${safeColor})`} opacity="0.6" />
 
-        {/* Bulb Shape - C9 Conical (Pointing Down) */}
-        <path
-            d="M12 34 
+            {/* Socket Base (At Top) */}
+            <rect x="8" y="0" width="8" height="6" rx="1" fill="#1a472a" />
+            <path d="M8 6 L16 6 L15 10 L9 10 Z" fill="#0f2b19" />
+
+            {/* Bulb Shape - C9 Conical (Pointing Down) */}
+            <path
+                d="M12 34 
          C 16 34, 20 28, 20 22 
          C 20 16, 16 10, 12 10 
          C 8 10, 4 16, 4 22 
          C 4 28, 8 34, 12 34 Z"
-            fill={`url(#bulb-gradient-${color})`}
-            stroke={color}
-            strokeWidth="0.5"
-            strokeOpacity="0.5"
-        />
+                fill={`url(#bulb-gradient-${safeColor})`}
+                stroke={color}
+                strokeWidth="0.5"
+                strokeOpacity="0.5"
+            />
 
-        {/* Facet/Reflection Highlight */}
-        <path
-            d="M12 32 
+            {/* Facet/Reflection Highlight */}
+            <path
+                d="M12 32 
          C 14 32, 16 28, 16 24 
          C 16 20, 14 16, 12 16"
-            fill="none"
-            stroke="#fff"
-            strokeWidth="1"
-            strokeOpacity="0.4"
-            strokeLinecap="round"
-        />
-    </svg>
-);
+                fill="none"
+                stroke="#fff"
+                strokeWidth="1"
+                strokeOpacity="0.4"
+                strokeLinecap="round"
+            />
+        </svg>
+    );
+};
+
+// ... (keep RDP functions as is) ...
+
+// ... inside PreviewCanvas ...
+
+const generateLights = () => {
+    if (!selectedLight || containerSize.width === 0 || containerSize.height === 0) return [];
+    const lights = [];
+    const spacingPx = 20;
+
+    lines.forEach(line => {
+        if (line.length < 2) return;
+
+        const pixelPoints = line.map(p => ({
+            x: (p.x / 100) * containerSize.width,
+            y: (p.y / 100) * containerSize.height
+        }));
+
+        let totalLength = 0;
+        const segments = [];
+
+        for (let i = 0; i < pixelPoints.length - 1; i++) {
+            const start = pixelPoints[i];
+            const end = pixelPoints[i + 1];
+            const dist = Math.sqrt(
+                Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)
+            );
+            // Only add segments with non-zero length to avoid division by zero
+            if (dist > 0) {
+                segments.push({ start, end, dist, accumulated: totalLength });
+                totalLength += dist;
+            }
+        }
+
+        if (totalLength === 0) return;
+
+        let currentDist = 0;
+        // Ensure we don't loop infinitely if something goes wrong
+        let safetyCounter = 0;
+        const maxLights = 1000;
+
+        while (currentDist <= totalLength && safetyCounter < maxLights) {
+            const segment = segments.find(s =>
+                currentDist >= s.accumulated &&
+                currentDist <= s.accumulated + s.dist
+            );
+
+            if (segment && segment.dist > 0) {
+                const segmentProgress = (currentDist - segment.accumulated) / segment.dist;
+
+                const pixelX = segment.start.x + (segment.end.x - segment.start.x) * segmentProgress;
+                const pixelY = segment.start.y + (segment.end.y - segment.start.y) * segmentProgress;
+
+                const percentX = (pixelX / containerSize.width) * 100;
+                const percentY = (pixelY / containerSize.height) * 100;
+
+                let color = selectedLight.color;
+                if (selectedLight.id === 'multicolor' || selectedLight.id === 'red-green') {
+                    const colors = selectedLight.id === 'multicolor'
+                        ? ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7']
+                        : ['#ef4444', '#22c55e'];
+                    const colorIndex = Math.floor(currentDist / spacingPx) % colors.length;
+                    color = colors[colorIndex];
+                }
+
+                lights.push({
+                    x: percentX,
+                    y: percentY,
+                    color: color,
+                    glow: selectedLight.glow
+                });
+            }
+
+            currentDist += spacingPx;
+            safetyCounter++;
+        }
+    });
+    return lights;
+};
 
 // Ramer-Douglas-Peucker simplification
 const perpendicularDistance = (point, lineStart, lineEnd) => {
