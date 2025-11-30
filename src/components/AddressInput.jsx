@@ -23,14 +23,18 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
     const autocompleteService = useRef(null);
     const sessionToken = useRef(null);
 
+    const [mapsLoaded, setMapsLoaded] = useState(false);
+
     useEffect(() => {
         const initService = () => {
             if (window.google && window.google.maps && window.google.maps.places) {
                 try {
                     if (!autocompleteService.current) {
+                        console.log("Initializing AutocompleteService...");
                         autocompleteService.current = new window.google.maps.places.AutocompleteService();
                         sessionToken.current = new window.google.maps.places.AutocompleteSessionToken();
                     }
+                    setMapsLoaded(true);
                     return true;
                 } catch (e) {
                     console.error("Error initializing Maps service:", e);
@@ -44,12 +48,13 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
             if (initService()) return;
 
             if (!document.querySelector(`script[src*="maps.googleapis.com"]`)) {
+                console.log("Loading Google Maps script...");
                 loadGoogleMaps(apiKey);
             } else {
-                // Script exists but not ready? Poll for it.
+                console.log("Maps script detected, waiting for initialization...");
                 const interval = setInterval(() => {
                     if (initService()) clearInterval(interval);
-                }, 200);
+                }, 500);
                 return () => clearInterval(interval);
             }
         }
@@ -57,17 +62,16 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
 
     const loadGoogleMaps = (key) => {
         if (window.google?.maps) return;
-
-        // Check if script already exists to prevent duplicates
         if (document.querySelector(`script[src*="maps.googleapis.com"]`)) return;
 
         const script = document.createElement('script');
         script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
         script.async = true;
         script.onload = () => {
-            // Initialization handled by the poller/effect
+            console.log("Google Maps script loaded successfully");
         };
         script.onerror = () => {
+            console.error("Failed to load Google Maps script");
             setError('Failed to load Google Maps script. Check your internet connection.');
             setShowKeyInput(true);
         };
@@ -79,7 +83,6 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
         if (apiKey.trim()) {
             localStorage.setItem('google_maps_key', apiKey);
             setShowKeyInput(false);
-            // Force reload if needed
             window.location.reload();
         }
     };
@@ -93,8 +96,8 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
             return;
         }
 
-        if (!autocompleteService.current) {
-            // Service not ready yet
+        if (!mapsLoaded || !autocompleteService.current) {
+            console.warn("Maps service not ready yet");
             return;
         }
 
@@ -134,7 +137,6 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
         setPredictions([]);
 
         // Construct Street View Static API URL
-        // Size: 1024x768 for better quality
         const imageUrl = `https://maps.googleapis.com/maps/api/streetview?size=1024x768&location=${encodeURIComponent(prediction.description)}&key=${apiKey}`;
 
         onAddressSelect(imageUrl);
@@ -222,7 +224,8 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
                         type="text"
                         value={query}
                         onChange={handleInputChange}
-                        placeholder="Enter your home address..."
+                        disabled={!mapsLoaded}
+                        placeholder={mapsLoaded ? "Enter your home address..." : "Initializing Google Maps..."}
                         style={{
                             flex: 1,
                             background: 'transparent',
@@ -230,7 +233,9 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
                             color: 'white',
                             fontSize: '1rem',
                             outline: 'none',
-                            padding: '0.5rem 0'
+                            padding: '0.5rem 0',
+                            opacity: mapsLoaded ? 1 : 0.5,
+                            cursor: mapsLoaded ? 'text' : 'wait'
                         }}
                     />
                     {isLoading && (
