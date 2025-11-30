@@ -9,10 +9,36 @@ function App({ onClose }) {
   const [selectedLight, setSelectedLight] = useState(null);
 
   return (
-    // Full viewport backdrop with solid dark background
-    <div className="fixed inset-0 z-[9999] bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+    // Full viewport backdrop with solid dark background - using inline styles for reliability
+    <div
+      className="fixed inset-0 z-[9999] bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999,
+        backgroundColor: 'rgba(2, 6, 23, 0.95)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1rem'
+      }}
+    >
       {/* Centered Modal - Compact size, no scrolling */}
-      <div className="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 w-full max-w-2xl overflow-hidden flex flex-col">
+      <div
+        className="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 w-full max-w-2xl overflow-hidden flex flex-col"
+        style={{
+          backgroundColor: '#0f172a',
+          borderRadius: '1rem',
+          border: '1px solid #1e293b',
+          maxWidth: '42rem',
+          width: '100%',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+        }}
+      >
         {/* Header - Compact */}
         <header className="flex items-center justify-between px-6 py-3 border-b border-slate-800 bg-slate-900">
           <div className="flex items-center gap-2">
