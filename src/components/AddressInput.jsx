@@ -52,11 +52,13 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
                 loadGoogleMaps(apiKey);
             } else {
                 console.log("Maps script detected, waiting for initialization...");
-                const interval = setInterval(() => {
-                    if (initService()) clearInterval(interval);
-                }, 500);
-                return () => clearInterval(interval);
             }
+
+            // Always poll until ready
+            const interval = setInterval(() => {
+                if (initService()) clearInterval(interval);
+            }, 500);
+            return () => clearInterval(interval);
         }
     }, [apiKey]);
 
