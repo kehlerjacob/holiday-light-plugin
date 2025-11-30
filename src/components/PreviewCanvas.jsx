@@ -7,11 +7,20 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     const [showLights, setShowLights] = useState(false);
     const [clickPoint, setClickPoint] = useState(null);
     const containerRef = useRef(null);
+    const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
-    // Debug: log state changes
+    // Update container size when image loads
     useEffect(() => {
-        console.log('Lines:', lines.length, 'Click point:', clickPoint, 'Drawing:', isDrawing);
-    }, [lines, clickPoint, isDrawing]);
+        if (containerRef.current) {
+            const updateSize = () => {
+                const rect = containerRef.current.getBoundingClientRect();
+                setContainerSize({ width: rect.width, height: rect.height });
+            };
+            updateSize();
+            window.addEventListener('resize', updateSize);
+            return () => window.removeEventListener('resize', updateSize);
+        }
+    }, [image]);
 
     const getCoordinates = (e) => {
         if (!containerRef.current) return null;
@@ -28,19 +37,14 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     };
 
     const handleClick = (e) => {
-        // Prevent if showing lights or currently dragging
         if (showLights || isDrawing) return;
 
         const coords = getCoordinates(e);
         if (!coords) return;
 
-        console.log('Click at:', coords);
-
         if (!clickPoint) {
-            console.log('Setting first point');
             setClickPoint(coords);
         } else {
-            console.log('Creating line from', clickPoint, 'to', coords);
             const newLine = [clickPoint, coords];
             setLines([...lines, newLine]);
             setClickPoint(null);
@@ -48,14 +52,8 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     };
 
     const handleMouseDown = (e) => {
-        if (showLights) return;
+        if (showLights || clickPoint) return;
 
-        // If there's a click point, this click should complete the line, not start dragging
-        if (clickPoint) {
-            return;
-        }
-
-        console.log('Starting drag');
         setIsDrawing(true);
         const coords = getCoordinates(e);
         if (coords) {
@@ -73,7 +71,6 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
 
     const handleMouseUp = () => {
         if (!isDrawing) return;
-        console.log('Ending drag, points:', currentLine.length);
         setIsDrawing(false);
         if (currentLine.length > 1) {
             setLines(prev => [...prev, currentLine]);
@@ -214,7 +211,7 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                     draggable={false}
                 />
 
-                {/* Canvas overlay for lines - ABOVE image */}
+                {/* Canvas overlay for lines */}
                 <div
                     style={{
                         position: 'absolute',
@@ -225,7 +222,7 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                         pointerEvents: 'none'
                     }}
                 >
-                    {/* Draw completed lines as DIVs for better visibility */}
+                    {/* Draw completed lines */}
                     {!showLights && lines.map((line, lineIndex) => (
                         <svg
                             key={`line-${lineIndex}`}
@@ -237,15 +234,18 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                                 height: '100%',
                                 pointerEvents: 'none'
                             }}
+                            viewBox="0 0 100 100"
+                            preserveAspectRatio="none"
                         >
                             <polyline
-                                points={line.map(p => `${p.x}%,${p.y}%`).join(' ')}
+                                points={line.map(p => `${p.x},${p.y}`).join(' ')}
                                 fill="none"
                                 stroke="#3b82f6"
-                                strokeWidth="4"
+                                strokeWidth="0.5"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                style={{ filter: 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.5))' }}
+                                vectorEffect="non-scaling-stroke"
+                                style={{ filter: 'drop-shadow(0 0 2px rgba(59, 130, 246, 0.8))' }}
                             />
                         </svg>
                     ))}
@@ -261,15 +261,18 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                                 height: '100%',
                                 pointerEvents: 'none'
                             }}
+                            viewBox="0 0 100 100"
+                            preserveAspectRatio="none"
                         >
                             <polyline
-                                points={currentLine.map(p => `${p.x}%,${p.y}%`).join(' ')}
+                                points={currentLine.map(p => `${p.x},${p.y}`).join(' ')}
                                 fill="none"
                                 stroke="#60a5fa"
-                                strokeWidth="4"
+                                strokeWidth="0.5"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                style={{ filter: 'drop-shadow(0 0 4px rgba(96, 165, 250, 0.5))' }}
+                                vectorEffect="non-scaling-stroke"
+                                style={{ filter: 'drop-shadow(0 0 2px rgba(96, 165, 250, 0.8))' }}
                             />
                         </svg>
                     )}
