@@ -1,8 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 
-// C9 Bulb Component
+// C9 Bulb Component - Inverted (Socket at top)
 const C9Bulb = ({ color, glow }) => (
-    <svg width="24" height="36" viewBox="0 0 24 36" style={{ overflow: 'visible' }}>
+    <svg width="16" height="24" viewBox="0 0 24 36" style={{ overflow: 'visible' }}>
         <defs>
             <radialGradient id={`bulb-gradient-${color}`} cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
                 <stop offset="0%" stopColor="#fff" stopOpacity="0.9" />
@@ -19,19 +19,19 @@ const C9Bulb = ({ color, glow }) => (
         </defs>
 
         {/* Glow Effect */}
-        <circle cx="12" cy="14" r="16" fill={glow} filter={`url(#glow-${color})`} opacity="0.6" />
+        <circle cx="12" cy="22" r="16" fill={glow} filter={`url(#glow-${color})`} opacity="0.6" />
 
-        {/* Socket Base */}
-        <rect x="8" y="24" width="8" height="6" rx="1" fill="#1a472a" />
-        <path d="M8 24 L16 24 L15 28 L9 28 Z" fill="#0f2b19" />
+        {/* Socket Base (At Top) */}
+        <rect x="8" y="0" width="8" height="6" rx="1" fill="#1a472a" />
+        <path d="M8 6 L16 6 L15 10 L9 10 Z" fill="#0f2b19" />
 
-        {/* Bulb Shape - C9 Conical */}
+        {/* Bulb Shape - C9 Conical (Pointing Down) */}
         <path
-            d="M12 2 
-         C 16 2, 20 8, 20 14 
-         C 20 20, 16 26, 12 26 
-         C 8 26, 4 20, 4 14 
-         C 4 8, 8 2, 12 2 Z"
+            d="M12 34 
+         C 16 34, 20 28, 20 22 
+         C 20 16, 16 10, 12 10 
+         C 8 10, 4 16, 4 22 
+         C 4 28, 8 34, 12 34 Z"
             fill={`url(#bulb-gradient-${color})`}
             stroke={color}
             strokeWidth="0.5"
@@ -40,9 +40,9 @@ const C9Bulb = ({ color, glow }) => (
 
         {/* Facet/Reflection Highlight */}
         <path
-            d="M12 4 
-         C 14 4, 16 8, 16 12 
-         C 16 16, 14 20, 12 20"
+            d="M12 32 
+         C 14 32, 16 28, 16 24 
+         C 16 20, 14 16, 12 16"
             fill="none"
             stroke="#fff"
             strokeWidth="1"
@@ -52,6 +52,55 @@ const C9Bulb = ({ color, glow }) => (
     </svg>
 );
 
+// Ramer-Douglas-Peucker simplification
+const perpendicularDistance = (point, lineStart, lineEnd) => {
+    let dx = lineEnd.x - lineStart.x;
+    let dy = lineEnd.y - lineStart.y;
+    if (dx === 0 && dy === 0) {
+        return Math.sqrt(Math.pow(point.x - lineStart.x, 2) + Math.pow(point.y - lineStart.y, 2));
+    }
+
+    const t = ((point.x - lineStart.x) * dx + (point.y - lineStart.y) * dy) / (dx * dx + dy * dy);
+
+    let closestX, closestY;
+    if (t < 0) {
+        closestX = lineStart.x;
+        closestY = lineStart.y;
+    } else if (t > 1) {
+        closestX = lineEnd.x;
+        closestY = lineEnd.y;
+    } else {
+        closestX = lineStart.x + t * dx;
+        closestY = lineStart.y + t * dy;
+    }
+
+    return Math.sqrt(Math.pow(point.x - closestX, 2) + Math.pow(point.y - closestY, 2));
+};
+
+const simplifyLine = (points, epsilon) => {
+    if (points.length < 3) return points;
+
+    let dmax = 0;
+    let index = 0;
+    const end = points.length - 1;
+
+    for (let i = 1; i < end; i++) {
+        const d = perpendicularDistance(points[i], points[0], points[end]);
+        if (d > dmax) {
+            index = i;
+            dmax = d;
+        }
+    }
+
+    if (dmax > epsilon) {
+        const recResults1 = simplifyLine(points.slice(0, index + 1), epsilon);
+        const recResults2 = simplifyLine(points.slice(index), epsilon);
+        return [...recResults1.slice(0, -1), ...recResults2];
+    } else {
+        return [points[0], points[end]];
+    }
+};
+
 const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     const [lines, setLines] = useState([]);
     const [currentLine, setCurrentLine] = useState([]);
@@ -59,44 +108,9 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     const [showLights, setShowLights] = useState(false);
     const [isNightMode, setIsNightMode] = useState(false);
     const containerRef = useRef(null);
-    const imageRef = useRef(null);
-    const canvasRef = useRef(null); // Hidden canvas for pixel data
-    const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
-    // Update container size when image loads
-    useEffect(() => {
-        if (containerRef.current) {
-            const updateSize = () => {
-                const rect = containerRef.current.getBoundingClientRect();
-                setContainerSize({ width: rect.width, height: rect.height });
-            };
-            updateSize();
-            window.addEventListener('resize', updateSize);
-            return () => window.removeEventListener('resize', updateSize);
-        }
-    }, [image]);
-
-    // Initialize hidden canvas with image data
-    useEffect(() => {
-        if (imageRef.current && canvasRef.current) {
-            const img = imageRef.current;
-            const canvas = canvasRef.current;
-            const ctx = canvas.getContext('2d');
-
-            const handleLoad = () => {
-                canvas.width = img.naturalWidth;
-                canvas.height = img.naturalHeight;
-                ctx.drawImage(img, 0, 0);
-            };
-
-            if (img.complete) {
-                handleLoad();
-            } else {
-                img.addEventListener('load', handleLoad);
-                return () => img.removeEventListener('load', handleLoad);
-            }
-        }
-    }, [image]);
+    // Track if we're dragging to prevent click events after drag
+    const isDraggingRef = useRef(false);
 
     const getCoordinates = (e) => {
         if (!containerRef.current) return null;
@@ -112,127 +126,10 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
         return { x, y };
     };
 
-    // Edge detection and snapping logic
-    const snapLineToEdges = (linePoints) => {
-        if (!canvasRef.current || linePoints.length < 2) return linePoints;
-
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        const { width, height } = canvas;
-        const imageData = ctx.getImageData(0, 0, width, height);
-        const data = imageData.data;
-
-        // Helper to get grayscale value at x,y
-        const getPixel = (x, y) => {
-            if (x < 0 || x >= width || y < 0 || y >= height) return 0;
-            const i = (Math.floor(y) * width + Math.floor(x)) * 4;
-            // Simple luminance
-            return 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-        };
-
-        // Search radius for edges (in image pixels)
-        // Scale radius based on image size vs display size
-        const searchRadius = Math.max(5, Math.min(width, height) * 0.02);
-
-        const snappedPoints = linePoints.map(point => {
-            // Convert percentage to image coordinates
-            const imgX = (point.x / 100) * width;
-            const imgY = (point.y / 100) * height;
-
-            let bestX = imgX;
-            let bestY = imgY;
-            let maxGradient = 0;
-
-            // Search local window for strongest edge
-            for (let dy = -searchRadius; dy <= searchRadius; dy += 2) {
-                for (let dx = -searchRadius; dx <= searchRadius; dx += 2) {
-                    const x = imgX + dx;
-                    const y = imgY + dy;
-
-                    // Sobel-like gradient calculation
-                    const gx = getPixel(x + 1, y - 1) + 2 * getPixel(x + 1, y) + getPixel(x + 1, y + 1) -
-                        (getPixel(x - 1, y - 1) + 2 * getPixel(x - 1, y) + getPixel(x - 1, y + 1));
-                    const gy = getPixel(x - 1, y + 1) + 2 * getPixel(x, y + 1) + getPixel(x + 1, y + 1) -
-                        (getPixel(x - 1, y - 1) + 2 * getPixel(x, y - 1) + getPixel(x + 1, y - 1));
-
-                    const gradient = Math.sqrt(gx * gx + gy * gy);
-
-                    // Bias towards original point to prevent jumping too far for weak edges
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    const weightedGradient = gradient / (1 + dist * 0.1);
-
-                    if (weightedGradient > maxGradient && weightedGradient > 50) { // Threshold
-                        maxGradient = weightedGradient;
-                        bestX = x;
-                        bestY = y;
-                    }
-                }
-            }
-
-            // Convert back to percentage
-            return {
-                x: (bestX / width) * 100,
-                y: (bestY / height) * 100
-            };
-        });
-
-        // Ramer-Douglas-Peucker simplification
-        const simplifyLine = (points, epsilon) => {
-            if (points.length < 3) return points;
-
-            let dmax = 0;
-            let index = 0;
-            const end = points.length - 1;
-
-            for (let i = 1; i < end; i++) {
-                // Perpendicular distance from point to line segment
-                const d = perpendicularDistance(points[i], points[0], points[end]);
-                if (d > dmax) {
-                    index = i;
-                    dmax = d;
-                }
-            }
-
-            if (dmax > epsilon) {
-                const recResults1 = simplifyLine(points.slice(0, index + 1), epsilon);
-                const recResults2 = simplifyLine(points.slice(index), epsilon);
-                return [...recResults1.slice(0, -1), ...recResults2];
-            } else {
-                return [points[0], points[end]];
-            }
-        };
-
-        const perpendicularDistance = (point, lineStart, lineEnd) => {
-            let dx = lineEnd.x - lineStart.x;
-            let dy = lineEnd.y - lineStart.y;
-            if (dx === 0 && dy === 0) {
-                return Math.sqrt(Math.pow(point.x - lineStart.x, 2) + Math.pow(point.y - lineStart.y, 2));
-            }
-
-            const t = ((point.x - lineStart.x) * dx + (point.y - lineStart.y) * dy) / (dx * dx + dy * dy);
-
-            let closestX, closestY;
-            if (t < 0) {
-                closestX = lineStart.x;
-                closestY = lineStart.y;
-            } else if (t > 1) {
-                closestX = lineEnd.x;
-                closestY = lineEnd.y;
-            } else {
-                closestX = lineStart.x + t * dx;
-                closestY = lineStart.y + t * dy;
-            }
-
-            return Math.sqrt(Math.pow(point.x - closestX, 2) + Math.pow(point.y - closestY, 2));
-        };
-
-        // Apply simplification (epsilon of 0.5% is usually good for this scale)
-        return simplifyLine(snappedPoints, 0.5);
-    };
-
     const handleMouseDown = (e) => {
         if (showLights) return;
 
+        isDraggingRef.current = false;
         setIsDrawing(true);
         const coords = getCoordinates(e);
         if (coords) {
@@ -243,6 +140,7 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     const handleMouseMove = (e) => {
         if (!isDrawing || showLights) return;
 
+        isDraggingRef.current = true;
         const coords = getCoordinates(e);
         if (coords) {
             setCurrentLine(prev => [...prev, coords]);
@@ -254,11 +152,16 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
 
         setIsDrawing(false);
         if (currentLine.length > 1) {
-            // Snap the line to edges before saving
-            const snappedLine = snapLineToEdges(currentLine);
-            setLines(prev => [...prev, snappedLine]);
+            // Aggressive simplification to straighten lines
+            // Epsilon of 1.5 forces rough lines to become straight segments
+            const straightenedLine = simplifyLine(currentLine, 1.5);
+            setLines(prev => [...prev, straightenedLine]);
         }
         setCurrentLine([]);
+
+        setTimeout(() => {
+            isDraggingRef.current = false;
+        }, 100);
     };
 
     const clearLines = () => {
@@ -286,7 +189,7 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     const generateLights = () => {
         if (!selectedLight) return [];
         const lights = [];
-        const spacing = 3.5;
+        const spacing = 4.0; // Increased spacing to prevent bunching
 
         lines.forEach(line => {
             if (line.length < 2) return;
@@ -313,10 +216,9 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
 
                 if (segment) {
                     const segmentProgress = (currentDist - segment.accumulated) / segment.dist;
-                    // Get light color - handle multicolor/gradient
+
                     let color = selectedLight.color;
                     if (selectedLight.id === 'multicolor' || selectedLight.id === 'red-green') {
-                        // Pick a color based on position for multicolor
                         const colors = selectedLight.id === 'multicolor'
                             ? ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7']
                             : ['#ef4444', '#22c55e'];
@@ -351,12 +253,6 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                 border: '1px solid #1e293b'
             }}
         >
-            {/* Hidden canvas for image processing */}
-            <canvas
-                ref={canvasRef}
-                style={{ display: 'none' }}
-            />
-
             {/* Action Buttons */}
             <div
                 style={{
@@ -438,10 +334,8 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                 onMouseLeave={handleMouseUp}
             >
                 <img
-                    ref={imageRef}
                     src={image}
                     alt="Home Preview"
-                    crossOrigin="anonymous" // Needed for canvas to read pixels if image is from external URL
                     style={{
                         width: '100%',
                         height: 'auto',
@@ -551,7 +445,7 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                             }}
                         >
                             Click and drag to draw lines<br />
-                            Lines will snap to edges automatically
+                            Lines will automatically straighten
                         </div>
                     </div>
                 )}
@@ -564,9 +458,9 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                             position: 'absolute',
                             left: `${light.x}%`,
                             top: `${light.y}%`,
-                            width: '24px',
-                            height: '36px',
-                            transform: 'translate(-50%, -100%)', // Anchor at bottom (socket)
+                            width: '16px',
+                            height: '24px',
+                            transform: 'translate(-50%, 0)', // Anchor at top (socket)
                             pointerEvents: 'none'
                         }}
                     >
