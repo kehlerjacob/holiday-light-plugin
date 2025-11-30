@@ -104,7 +104,11 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
             originalError(...args);
             // Check for common Maps errors
             const errorStr = args.join(' ');
-            if (errorStr.includes('Google Maps JavaScript API error')) {
+            if (errorStr.includes('ApiNotActivatedMapError')) {
+                addLog(`CRITICAL: Maps JavaScript API not enabled!`);
+                setError("Error: The 'Maps JavaScript API' is not enabled. Please enable it in Google Cloud Console.");
+                setShowKeyInput(true);
+            } else if (errorStr.includes('Google Maps JavaScript API error')) {
                 addLog(`CRITICAL: ${errorStr}`);
             } else {
                 addLog(`Error: ${errorStr.substring(0, 50)}...`);
