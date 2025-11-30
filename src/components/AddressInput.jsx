@@ -262,22 +262,31 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
                     </div>
                 )}
 
-                {/* Predictions Dropdown */}
-                {predictions.length > 0 && (
+                {/* Predictions Dropdown - Now in-flow to prevent clipping */}
+                {(predictions.length > 0 || isLoading || (query.length > 3 && predictions.length === 0)) && (
                     <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
                         marginTop: '0.5rem',
                         backgroundColor: '#1e293b',
                         borderRadius: '0.75rem',
                         border: '1px solid #334155',
                         overflow: 'hidden',
-                        zIndex: 50,
-                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)'
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                        width: '100%'
                     }}>
-                        {predictions.map((prediction) => (
+                        {isLoading && (
+                            <div style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8' }}>
+                                <Loader size={20} className="animate-spin" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '0.5rem' }} />
+                                Searching...
+                            </div>
+                        )}
+
+                        {!isLoading && predictions.length === 0 && query.length > 3 && (
+                            <div style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8' }}>
+                                No address found. Try a different search.
+                            </div>
+                        )}
+
+                        {!isLoading && predictions.map((prediction) => (
                             <button
                                 key={prediction.place_id}
                                 onClick={() => handleSelect(prediction)}
@@ -298,7 +307,7 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
                                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#334155'}
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                             >
-                                <MapPin size={18} color="#94a3b8" />
+                                <MapPin size={18} color="#94a3b8" style={{ minWidth: '18px' }} />
                                 <div>
                                     <div style={{ fontWeight: 500 }}>{prediction.structured_formatting.main_text}</div>
                                     <div style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
