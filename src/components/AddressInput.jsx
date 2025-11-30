@@ -17,9 +17,13 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
         return localStorage.getItem('replicate_api_token') || '';
     });
 
+    const [aiProvider, setAiProvider] = useState(() => {
+        return localStorage.getItem('ai_provider') || 'horde'; // Default to free Horde
+    });
+
     const [showKeyInput, setShowKeyInput] = useState(() => {
         const mapsKey = localStorage.getItem('google_maps_key') || defaultKey;
-        // Show input if Maps key is missing. Replicate key is optional for initial load.
+        // Show input if Maps key is missing.
         return !mapsKey;
     });
 
@@ -89,9 +93,12 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
         e.preventDefault();
         if (apiKey.trim()) {
             localStorage.setItem('google_maps_key', apiKey);
-            if (replicateKey.trim()) {
+            localStorage.setItem('ai_provider', aiProvider);
+
+            if (aiProvider === 'replicate' && replicateKey.trim()) {
                 localStorage.setItem('replicate_api_token', replicateKey);
             }
+
             setShowKeyInput(false);
             window.location.reload();
         }
@@ -177,7 +184,7 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
                 }}>
                     <h3 style={{ color: 'white', marginBottom: '1rem', fontSize: '1.1rem' }}>App Configuration</h3>
                     <p style={{ color: '#94a3b8', marginBottom: '1rem', fontSize: '0.9rem' }}>
-                        Please enter your API keys to continue.
+                        Configure your API keys below.
                     </p>
                     <form onSubmit={handleKeySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <div>
@@ -198,24 +205,55 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
                                 }}
                             />
                         </div>
-                        <div>
-                            <label style={{ display: 'block', textAlign: 'left', color: '#cbd5e1', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Replicate API Key (Optional, for AI)</label>
-                            <input
-                                type="text"
-                                value={replicateKey}
-                                onChange={(e) => setReplicateKey(e.target.value)}
-                                placeholder="r8_..."
-                                style={{
-                                    width: '100%',
-                                    padding: '0.75rem',
-                                    borderRadius: '0.5rem',
-                                    border: '1px solid #475569',
-                                    backgroundColor: '#0f172a',
-                                    color: 'white',
-                                    outline: 'none'
-                                }}
-                            />
+
+                        {/* AI Provider Selection */}
+                        <div style={{ textAlign: 'left' }}>
+                            <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.8rem', marginBottom: '0.5rem' }}>AI Image Generation Provider</label>
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white', cursor: 'pointer' }}>
+                                    <input
+                                        type="radio"
+                                        name="aiProvider"
+                                        value="horde"
+                                        checked={aiProvider === 'horde'}
+                                        onChange={(e) => setAiProvider(e.target.value)}
+                                    />
+                                    <span>AI Horde (Free, Slower)</span>
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white', cursor: 'pointer' }}>
+                                    <input
+                                        type="radio"
+                                        name="aiProvider"
+                                        value="replicate"
+                                        checked={aiProvider === 'replicate'}
+                                        onChange={(e) => setAiProvider(e.target.value)}
+                                    />
+                                    <span>Replicate (Paid, Fast)</span>
+                                </label>
+                            </div>
                         </div>
+
+                        {aiProvider === 'replicate' && (
+                            <div>
+                                <label style={{ display: 'block', textAlign: 'left', color: '#cbd5e1', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Replicate API Key (Required for Replicate)</label>
+                                <input
+                                    type="text"
+                                    value={replicateKey}
+                                    onChange={(e) => setReplicateKey(e.target.value)}
+                                    placeholder="r8_..."
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem',
+                                        borderRadius: '0.5rem',
+                                        border: '1px solid #475569',
+                                        backgroundColor: '#0f172a',
+                                        color: 'white',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+                        )}
+
                         <button
                             type="submit"
                             style={{
