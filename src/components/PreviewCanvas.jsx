@@ -5,14 +5,13 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     const [currentLine, setCurrentLine] = useState([]);
     const [isDrawing, setIsDrawing] = useState(false);
     const [showLights, setShowLights] = useState(false);
-    const [clickPoints, setClickPoints] = useState([]); // For point-to-point mode
+    const [clickPoint, setClickPoint] = useState(null); // Single point for click mode
     const containerRef = useRef(null);
 
     const getCoordinates = (e) => {
         if (!containerRef.current) return null;
         const rect = containerRef.current.getBoundingClientRect();
 
-        // Handle both mouse and touch events
         const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
         const clientY = e.clientY || (e.touches && e.touches[0]?.clientY);
 
@@ -30,13 +29,14 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
         const coords = getCoordinates(e);
         if (!coords) return;
 
-        const newPoints = [...clickPoints, coords];
-        setClickPoints(newPoints);
-
-        // If we have 2 points, create a line
-        if (newPoints.length === 2) {
-            setLines([...lines, newPoints]);
-            setClickPoints([]); // Reset for next line
+        if (!clickPoint) {
+            // First click - set the starting point
+            setClickPoint(coords);
+        } else {
+            // Second click - create a line from first point to second point
+            const newLine = [clickPoint, coords];
+            setLines([...lines, newLine]);
+            setClickPoint(null); // Reset for next line
         }
     };
 
@@ -44,8 +44,8 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     const handleMouseDown = (e) => {
         if (showLights) return;
 
-        // Don't start drawing if we're in click mode (have 1 point)
-        if (clickPoints.length === 1) return;
+        // Clear any pending click point when starting to drag
+        setClickPoint(null);
 
         setIsDrawing(true);
         const coords = getCoordinates(e);
@@ -74,13 +74,13 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     const clearLines = () => {
         setLines([]);
         setCurrentLine([]);
-        setClickPoints([]);
+        setClickPoint(null);
         setShowLights(false);
     };
 
     const previewDesign = () => {
         if (lines.length === 0) return;
-        setClickPoints([]); // Clear any pending click points
+        setClickPoint(null); // Clear any pending click point
         setShowLights(true);
     };
 
@@ -92,7 +92,7 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     const generateLights = () => {
         if (!selectedLight) return [];
         const lights = [];
-        const spacing = 2.5; // Spacing between lights in percentage
+        const spacing = 2.5;
 
         lines.forEach(line => {
             for (let i = 0; i < line.length - 1; i++) {
@@ -129,7 +129,7 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                 border: '1px solid #1e293b'
             }}
         >
-            {/* Action Buttons - Top Right */}
+            {/* Action Buttons */}
             <div
                 style={{
                     position: 'absolute',
@@ -199,9 +199,6 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                     e.preventDefault();
                     handleClick(e);
                 }}
-                onTouchMove={(e) => {
-                    e.preventDefault();
-                }}
             >
                 <img
                     src={image}
@@ -228,13 +225,13 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                         pointerEvents: 'none'
                     }}
                 >
-                    {/* Draw completed lines */}
-                    {!showLights && lines.map((line, lineIndex) => (
+                    {/* Draw completed lines - ALWAYS VISIBLE */}
+                    {lines.map((line, lineIndex) => (
                         <polyline
                             key={`line-${lineIndex}`}
                             points={line.map(p => `${p.x}%,${p.y}%`).join(' ')}
                             fill="none"
-                            stroke="#3b82f6"
+                            stroke={showLights ? 'transparent' : '#3b82f6'}
                             strokeWidth="3"
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -255,35 +252,22 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                         />
                     )}
 
-                    {/* Show click points */}
-                    {!showLights && clickPoints.map((point, index) => (
+                    {/* Show first click point */}
+                    {!showLights && clickPoint && (
                         <circle
-                            key={`point-${index}`}
-                            cx={`${point.x}%`}
-                            cy={`${point.y}%`}
-                            r="5"
+                            cx={`${clickPoint.x}%`}
+                            cy={`${clickPoint.y}%`}
+                            r="6"
                             fill="#3b82f6"
-                            opacity="0.8"
-                        />
-                    ))}
-
-                    {/* Show preview line for second click */}
-                    {!showLights && clickPoints.length === 1 && (
-                        <line
-                            x1={`${clickPoints[0].x}%`}
-                            y1={`${clickPoints[0].y}%`}
-                            x2={`${clickPoints[0].x}%`}
-                            y2={`${clickPoints[0].y}%`}
-                            stroke="#60a5fa"
+                            stroke="white"
                             strokeWidth="2"
-                            strokeDasharray="5,5"
-                            opacity="0.5"
+                            opacity="0.9"
                         />
                     )}
                 </svg>
 
                 {/* Instructions Overlay */}
-                {!showLights && lines.length === 0 && currentLine.length === 0 && clickPoints.length === 0 && (
+                {!showLights && lines.length === 0 && currentLine.length === 0 && !clickPoint && (
                     <div
                         style={{
                             position: 'absolute',
@@ -313,7 +297,7 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                     </div>
                 )}
 
-                {/* Render Lights */}
+                {/* Render Lights when previewing */}
                 {showLights && lightsToRender.map((light, index) => (
                     <div
                         key={`light-${index}`}
