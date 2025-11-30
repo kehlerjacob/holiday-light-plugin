@@ -346,6 +346,26 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
 
     const lightsToRender = showLights ? generateLights() : [];
 
+    // ... existing code ...
+
+    const simulateAIGeneration = () => {
+        // Mock AI generation: Find rooflines (simplified as top edge for now)
+        // In a real app, this would call Replicate API
+        const width = containerSize.width;
+        const height = containerSize.height;
+
+        // Create a "roofline" shape
+        const roofPoints = [
+            { x: 10, y: 40 },
+            { x: 50, y: 20 },
+            { x: 90, y: 40 }
+        ];
+
+        setLines([roofPoints]);
+        setShowLights(true);
+        setIsNightMode(true);
+    };
+
     return (
         <div
             style={{
@@ -368,6 +388,29 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                     gap: '0.5rem'
                 }}
             >
+                {/* New AI Button */}
+                {!showLights && lines.length === 0 && (
+                    <button
+                        onClick={simulateAIGeneration}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            background: 'linear-gradient(to right, #8b5cf6, #ec4899)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '0.5rem',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)'
+                        }}
+                    >
+                        ✨ Auto-Generate Lights
+                    </button>
+                )}
+
                 {showLights && (
                     <button
                         onClick={toggleNightMode}
@@ -420,6 +463,9 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                     New Photo
                 </button>
             </div>
+
+            {/* ... rest of render ... */}
+
 
             {/* Image Container */}
             <div

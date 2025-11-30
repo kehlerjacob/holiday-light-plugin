@@ -5,8 +5,19 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
     const [query, setQuery] = useState('');
     const [predictions, setPredictions] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [apiKey, setApiKey] = useState(localStorage.getItem('google_maps_key') || '');
-    const [showKeyInput, setShowKeyInput] = useState(!localStorage.getItem('google_maps_key'));
+
+    // Use provided key as default
+    const defaultKey = 'AIzaSyDs-lSUxw7qN3Ae0CK6TvcrTUSKXK_kdY8';
+
+    const [apiKey, setApiKey] = useState(() => {
+        return localStorage.getItem('google_maps_key') || defaultKey;
+    });
+
+    const [showKeyInput, setShowKeyInput] = useState(() => {
+        const key = localStorage.getItem('google_maps_key') || defaultKey;
+        return !key;
+    });
+
     const [error, setError] = useState(null);
 
     const autocompleteService = useRef(null);
@@ -18,19 +29,28 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
                 autocompleteService.current = new window.google.maps.places.AutocompleteService();
                 sessionToken.current = new window.google.maps.places.AutocompleteSessionToken();
             }
+        } else if (apiKey) {
+            loadGoogleMaps(apiKey);
         }
     }, [apiKey]);
 
     const loadGoogleMaps = (key) => {
         if (window.google?.maps) return;
 
+        // Check if script already exists to prevent duplicates
+        if (document.querySelector(`script[src*="maps.googleapis.com"]`)) return;
+
         const script = document.createElement('script');
         script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
         script.async = true;
         script.onload = () => {
-            autocompleteService.current = new window.google.maps.places.AutocompleteService();
-            sessionToken.current = new window.google.maps.places.AutocompleteSessionToken();
-            setError(null);
+            try {
+                autocompleteService.current = new window.google.maps.places.AutocompleteService();
+                sessionToken.current = new window.google.maps.places.AutocompleteSessionToken();
+                setError(null);
+            } catch (e) {
+                console.error("Error initializing Google Maps services", e);
+            }
         };
         script.onerror = () => {
             setError('Invalid API Key or failed to load Google Maps');
@@ -80,9 +100,7 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
         setPredictions([]);
 
         // Construct Street View Static API URL
-        // We use the address description directly
-        // Size: 2048x1024 for high res (max allowed usually 640x640 for free, but let's try larger)
-        // Actually standard max is 640x640, Premium is 2048x2048. Let's use 640x640 for safety or 800x600.
+        // Size: 1024x768 for better quality
         const imageUrl = `https://maps.googleapis.com/maps/api/streetview?size=1024x768&location=${encodeURIComponent(prediction.description)}&key=${apiKey}`;
 
         onAddressSelect(imageUrl);
