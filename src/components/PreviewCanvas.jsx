@@ -5,7 +5,7 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     const [currentLine, setCurrentLine] = useState([]);
     const [isDrawing, setIsDrawing] = useState(false);
     const [showLights, setShowLights] = useState(false);
-    const [clickPoint, setClickPoint] = useState(null);
+    const [isNightMode, setIsNightMode] = useState(false);
     const containerRef = useRef(null);
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
@@ -36,28 +36,9 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
         return { x, y };
     };
 
-    // Track if we're dragging to prevent click events after drag
-    const isDraggingRef = useRef(false);
-
-    const handleClick = (e) => {
-        if (showLights || isDrawing || isDraggingRef.current) return;
-
-        const coords = getCoordinates(e);
-        if (!coords) return;
-
-        if (!clickPoint) {
-            setClickPoint(coords);
-        } else {
-            const newLine = [clickPoint, coords];
-            setLines([...lines, newLine]);
-            setClickPoint(null);
-        }
-    };
-
     const handleMouseDown = (e) => {
-        if (showLights || clickPoint) return;
+        if (showLights) return;
 
-        isDraggingRef.current = false;
         setIsDrawing(true);
         const coords = getCoordinates(e);
         if (coords) {
@@ -67,8 +48,6 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
 
     const handleMouseMove = (e) => {
         if (!isDrawing || showLights) return;
-
-        isDraggingRef.current = true; // We are definitely dragging now
 
         const coords = getCoordinates(e);
         if (coords) {
@@ -84,39 +63,38 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
             setLines(prev => [...prev, currentLine]);
         }
         setCurrentLine([]);
-
-        // Reset dragging flag after a short delay to allow click event to fire (and be blocked)
-        setTimeout(() => {
-            isDraggingRef.current = false;
-        }, 100);
     };
 
     const clearLines = () => {
         setLines([]);
         setCurrentLine([]);
-        setClickPoint(null);
         setShowLights(false);
+        setIsNightMode(false);
     };
 
     const previewDesign = () => {
         if (lines.length === 0) return;
-        setClickPoint(null);
         setShowLights(true);
+        setIsNightMode(true); // Auto-enable night mode on preview
     };
 
     const editDesign = () => {
         setShowLights(false);
+        setIsNightMode(false); // Disable night mode when editing
+    };
+
+    const toggleNightMode = () => {
+        setIsNightMode(!isNightMode);
     };
 
     const generateLights = () => {
         if (!selectedLight) return [];
         const lights = [];
-        const spacing = 3.5; // Increased spacing for better bulb separation
+        const spacing = 3.5;
 
         lines.forEach(line => {
             if (line.length < 2) return;
 
-            // Calculate total length of the line
             let totalLength = 0;
             const segments = [];
 
@@ -130,10 +108,8 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                 totalLength += dist;
             }
 
-            // Place lights at fixed intervals
             let currentDist = 0;
             while (currentDist <= totalLength) {
-                // Find which segment this distance falls into
                 const segment = segments.find(s =>
                     currentDist >= s.accumulated &&
                     currentDist <= s.accumulated + s.dist
@@ -178,6 +154,25 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                     gap: '0.5rem'
                 }}
             >
+                {showLights && (
+                    <button
+                        onClick={toggleNightMode}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            backgroundColor: isNightMode ? 'rgba(59, 130, 246, 0.9)' : 'rgba(15, 23, 42, 0.9)',
+                            backdropFilter: 'blur(8px)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '0.5rem',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem',
+                            fontWeight: 600,
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        {isNightMode ? 'Day Mode' : 'Night Mode'}
+                    </button>
+                )}
                 <button
                     onClick={clearLines}
                     style={{
@@ -223,7 +218,6 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                     WebkitUserSelect: 'none',
                     touchAction: 'none'
                 }}
-                onClick={handleClick}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
@@ -238,7 +232,11 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                         objectFit: 'contain',
                         maxHeight: '70vh',
                         display: 'block',
-                        pointerEvents: 'none'
+                        pointerEvents: 'none',
+                        transition: 'filter 0.5s ease',
+                        filter: isNightMode
+                            ? 'brightness(0.4) contrast(1.2) saturate(1.2)'
+                            : 'none'
                     }}
                     draggable={false}
                 />
@@ -313,7 +311,7 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                 </div>
 
                 {/* Instructions */}
-                {!showLights && lines.length === 0 && currentLine.length === 0 && !clickPoint && (
+                {!showLights && lines.length === 0 && currentLine.length === 0 && (
                     <div
                         style={{
                             position: 'absolute',
@@ -336,8 +334,7 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                                 textAlign: 'center'
                             }}
                         >
-                            Click two points to draw a line<br />
-                            or click and drag to draw freeform
+                            Click and drag to draw lines
                         </div>
                     </div>
                 )}
