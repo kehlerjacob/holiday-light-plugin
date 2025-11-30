@@ -7,6 +7,8 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     const [showLights, setShowLights] = useState(false);
     const [isNightMode, setIsNightMode] = useState(false);
     const containerRef = useRef(null);
+    const imageRef = useRef(null);
+    const canvasRef = useRef(null); // Hidden canvas for pixel data
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
     // Update container size when image loads
@@ -22,6 +24,28 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
         }
     }, [image]);
 
+    // Initialize hidden canvas with image data
+    useEffect(() => {
+        if (imageRef.current && canvasRef.current) {
+            const img = imageRef.current;
+            const canvas = canvasRef.current;
+            const ctx = canvas.getContext('2d');
+
+            const handleLoad = () => {
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                ctx.drawImage(img, 0, 0);
+            };
+
+            if (img.complete) {
+                handleLoad();
+            } else {
+                img.addEventListener('load', handleLoad);
+                return () => img.removeEventListener('load', handleLoad);
+            }
+        }
+    }, [image]);
+
     const getCoordinates = (e) => {
         if (!containerRef.current) return null;
         const rect = containerRef.current.getBoundingClientRect();
@@ -34,6 +58,91 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
         const x = ((clientX - rect.left) / rect.width) * 100;
         const y = ((clientY - rect.top) / rect.height) * 100;
         return { x, y };
+    };
+
+    // Edge detection and snapping logic
+    const snapLineToEdges = (linePoints) => {
+        if (!canvasRef.current || linePoints.length < 2) return linePoints;
+
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        const { width, height } = canvas;
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+
+        // Helper to get grayscale value at x,y
+        const getPixel = (x, y) => {
+            if (x < 0 || x >= width || y < 0 || y >= height) return 0;
+            const i = (Math.floor(y) * width + Math.floor(x)) * 4;
+            // Simple luminance
+            return 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        };
+
+        // Search radius for edges (in image pixels)
+        // Scale radius based on image size vs display size
+        const searchRadius = Math.max(5, Math.min(width, height) * 0.02);
+
+        const snappedPoints = linePoints.map(point => {
+            // Convert percentage to image coordinates
+            const imgX = (point.x / 100) * width;
+            const imgY = (point.y / 100) * height;
+
+            let bestX = imgX;
+            let bestY = imgY;
+            let maxGradient = 0;
+
+            // Search local window for strongest edge
+            for (let dy = -searchRadius; dy <= searchRadius; dy += 2) {
+                for (let dx = -searchRadius; dx <= searchRadius; dx += 2) {
+                    const x = imgX + dx;
+                    const y = imgY + dy;
+
+                    // Sobel-like gradient calculation
+                    const gx = getPixel(x + 1, y - 1) + 2 * getPixel(x + 1, y) + getPixel(x + 1, y + 1) -
+                        (getPixel(x - 1, y - 1) + 2 * getPixel(x - 1, y) + getPixel(x - 1, y + 1));
+                    const gy = getPixel(x - 1, y + 1) + 2 * getPixel(x, y + 1) + getPixel(x + 1, y + 1) -
+                        (getPixel(x - 1, y - 1) + 2 * getPixel(x, y - 1) + getPixel(x + 1, y - 1));
+
+                    const gradient = Math.sqrt(gx * gx + gy * gy);
+
+                    // Bias towards original point to prevent jumping too far for weak edges
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const weightedGradient = gradient / (1 + dist * 0.1);
+
+                    if (weightedGradient > maxGradient && weightedGradient > 50) { // Threshold
+                        maxGradient = weightedGradient;
+                        bestX = x;
+                        bestY = y;
+                    }
+                }
+            }
+
+            // Convert back to percentage
+            return {
+                x: (bestX / width) * 100,
+                y: (bestY / height) * 100
+            };
+        });
+
+        // Smooth the snapped line
+        const smoothedPoints = [];
+        if (snappedPoints.length > 2) {
+            smoothedPoints.push(snappedPoints[0]);
+            for (let i = 1; i < snappedPoints.length - 1; i++) {
+                const prev = snappedPoints[i - 1];
+                const curr = snappedPoints[i];
+                const next = snappedPoints[i + 1];
+
+                smoothedPoints.push({
+                    x: (prev.x + curr.x + next.x) / 3,
+                    y: (prev.y + curr.y + next.y) / 3
+                });
+            }
+            smoothedPoints.push(snappedPoints[snappedPoints.length - 1]);
+            return smoothedPoints;
+        }
+
+        return snappedPoints;
     };
 
     const handleMouseDown = (e) => {
@@ -60,7 +169,9 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
 
         setIsDrawing(false);
         if (currentLine.length > 1) {
-            setLines(prev => [...prev, currentLine]);
+            // Snap the line to edges before saving
+            const snappedLine = snapLineToEdges(currentLine);
+            setLines(prev => [...prev, snappedLine]);
         }
         setCurrentLine([]);
     };
@@ -75,12 +186,12 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     const previewDesign = () => {
         if (lines.length === 0) return;
         setShowLights(true);
-        setIsNightMode(true); // Auto-enable night mode on preview
+        setIsNightMode(true);
     };
 
     const editDesign = () => {
         setShowLights(false);
-        setIsNightMode(false); // Disable night mode when editing
+        setIsNightMode(false);
     };
 
     const toggleNightMode = () => {
@@ -143,6 +254,12 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                 border: '1px solid #1e293b'
             }}
         >
+            {/* Hidden canvas for image processing */}
+            <canvas
+                ref={canvasRef}
+                style={{ display: 'none' }}
+            />
+
             {/* Action Buttons */}
             <div
                 style={{
@@ -224,8 +341,10 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                 onMouseLeave={handleMouseUp}
             >
                 <img
+                    ref={imageRef}
                     src={image}
                     alt="Home Preview"
+                    crossOrigin="anonymous" // Needed for canvas to read pixels if image is from external URL
                     style={{
                         width: '100%',
                         height: 'auto',
@@ -334,7 +453,8 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                                 textAlign: 'center'
                             }}
                         >
-                            Click and drag to draw lines
+                            Click and drag to draw lines<br />
+                            Lines will snap to edges automatically
                         </div>
                     </div>
                 )}
