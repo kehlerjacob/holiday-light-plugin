@@ -92,9 +92,29 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
     const [debugLog, setDebugLog] = useState([]);
 
     const addLog = (msg) => {
-        console.log(msg);
+        // Also log to real console
+        // console.log(msg); // Avoid infinite loop if we hook console.log
         setDebugLog(prev => [...prev.slice(-4), msg]); // Keep last 5 logs
     };
+
+    // Capture global errors (like Google Maps auth errors)
+    useEffect(() => {
+        const originalError = console.error;
+        console.error = (...args) => {
+            originalError(...args);
+            // Check for common Maps errors
+            const errorStr = args.join(' ');
+            if (errorStr.includes('Google Maps JavaScript API error')) {
+                addLog(`CRITICAL: ${errorStr}`);
+            } else {
+                addLog(`Error: ${errorStr.substring(0, 50)}...`);
+            }
+        };
+
+        return () => {
+            console.error = originalError;
+        };
+    }, []);
 
     // Debounce timer ref
     const debounceTimer = useRef(null);
@@ -123,35 +143,40 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
         debounceTimer.current = setTimeout(() => {
             addLog(`Searching for: "${value}"...`);
 
-            autocompleteService.current.getPlacePredictions(
-                {
-                    input: value,
-                    sessionToken: sessionToken.current,
-                    // Removed 'types' restriction to allow broader results
-                },
-                (results, status) => {
-                    setIsLoading(false);
-                    addLog(`API Status: ${status}`);
+            try {
+                autocompleteService.current.getPlacePredictions(
+                    {
+                        input: value,
+                        sessionToken: sessionToken.current,
+                        // Removed 'types' restriction to allow broader results
+                    },
+                    (results, status) => {
+                        setIsLoading(false);
+                        addLog(`API Status: ${status}`);
 
-                    if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
-                        setPredictions(results);
-                        addLog(`Found ${results.length} results`);
-                    } else if (status === window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
-                        setPredictions([]);
-                        addLog("Zero results found");
-                    } else {
-                        setPredictions([]);
-                        if (status === 'REQUEST_DENIED') {
-                            setError('API Key Error: Request Denied. Check API restrictions.');
-                            setShowKeyInput(true);
-                        } else if (status === 'OVER_QUERY_LIMIT') {
-                            setError('API Quota Exceeded.');
+                        if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
+                            setPredictions(results);
+                            addLog(`Found ${results.length} results`);
+                        } else if (status === window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+                            setPredictions([]);
+                            addLog("Zero results found");
                         } else {
-                            setError(`Maps Error: ${status}`);
+                            setPredictions([]);
+                            if (status === 'REQUEST_DENIED') {
+                                setError('API Key Error: Request Denied. Check API restrictions.');
+                                setShowKeyInput(true);
+                            } else if (status === 'OVER_QUERY_LIMIT') {
+                                setError('API Quota Exceeded.');
+                            } else {
+                                setError(`Maps Error: ${status}`);
+                            }
                         }
                     }
-                }
-            );
+                );
+            } catch (e) {
+                setIsLoading(false);
+                addLog(`Exception: ${e.message}`);
+            }
         }, 300); // 300ms debounce
     };
 
