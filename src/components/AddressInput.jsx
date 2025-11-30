@@ -89,37 +89,6 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
         }
     };
 
-    const [debugLog, setDebugLog] = useState([]);
-
-    const addLog = (msg) => {
-        // Also log to real console
-        // console.log(msg); // Avoid infinite loop if we hook console.log
-        setDebugLog(prev => [...prev.slice(-4), msg]); // Keep last 5 logs
-    };
-
-    // Capture global errors (like Google Maps auth errors)
-    useEffect(() => {
-        const originalError = console.error;
-        console.error = (...args) => {
-            originalError(...args);
-            // Check for common Maps errors
-            const errorStr = args.join(' ');
-            if (errorStr.includes('ApiNotActivatedMapError')) {
-                addLog(`CRITICAL: Maps JavaScript API not enabled!`);
-                setError("Error: The 'Maps JavaScript API' is not enabled. Please enable it in Google Cloud Console.");
-                setShowKeyInput(true);
-            } else if (errorStr.includes('Google Maps JavaScript API error')) {
-                addLog(`CRITICAL: ${errorStr}`);
-            } else {
-                addLog(`Error: ${errorStr.substring(0, 50)}...`);
-            }
-        };
-
-        return () => {
-            console.error = originalError;
-        };
-    }, []);
-
     // Debounce timer ref
     const debounceTimer = useRef(null);
 
@@ -133,7 +102,6 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
         }
 
         if (!mapsLoaded || !autocompleteService.current) {
-            addLog("Maps service not ready yet");
             return;
         }
 
@@ -145,8 +113,6 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
 
         // Set new timer
         debounceTimer.current = setTimeout(() => {
-            addLog(`Searching for: "${value}"...`);
-
             try {
                 autocompleteService.current.getPlacePredictions(
                     {
@@ -156,14 +122,11 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
                     },
                     (results, status) => {
                         setIsLoading(false);
-                        addLog(`API Status: ${status}`);
 
                         if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
                             setPredictions(results);
-                            addLog(`Found ${results.length} results`);
                         } else if (status === window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
                             setPredictions([]);
-                            addLog("Zero results found");
                         } else {
                             setPredictions([]);
                             if (status === 'REQUEST_DENIED') {
@@ -179,7 +142,7 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
                 );
             } catch (e) {
                 setIsLoading(false);
-                addLog(`Exception: ${e.message}`);
+                console.error(e);
             }
         }, 300); // 300ms debounce
     };
@@ -371,13 +334,6 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
             </div>
 
             <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-                {/* Debug Log (Temporary) */}
-                <div style={{ marginTop: '1rem', fontSize: '0.7rem', color: '#64748b', fontFamily: 'monospace', textAlign: 'left' }}>
-                    {debugLog.map((log, i) => (
-                        <div key={i}>{log}</div>
-                    ))}
-                </div>
-
                 <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
                     or
                 </p>
