@@ -1,12 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useRef, useState } from 'react';
 import { X, Trash2 } from 'lucide-react';
 
 const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     const [lights, setLights] = useState([]);
     const containerRef = useRef(null);
 
-    // Simple click to add lights logic for now
     const handleImageClick = (e) => {
         if (!containerRef.current || !selectedLight) return;
 
@@ -23,44 +21,111 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     };
 
     return (
-        <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="relative w-full max-w-4xl mx-auto bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-700"
+        <div
+            style={{
+                position: 'relative',
+                width: '100%',
+                backgroundColor: '#0f172a',
+                borderRadius: '0.5rem',
+                overflow: 'hidden',
+                border: '1px solid #1e293b'
+            }}
         >
-            <div className="absolute top-4 right-4 z-20 flex gap-2">
+            {/* Action Buttons - Top Right */}
+            <div
+                style={{
+                    position: 'absolute',
+                    top: '0.75rem',
+                    right: '0.75rem',
+                    zIndex: 20,
+                    display: 'flex',
+                    gap: '0.5rem'
+                }}
+            >
                 <button
                     onClick={clearLights}
-                    className="p-2 bg-slate-800/80 backdrop-blur text-white rounded-full hover:bg-red-500/80 transition-colors"
+                    style={{
+                        padding: '0.5rem',
+                        backgroundColor: 'rgba(15, 23, 42, 0.8)',
+                        backdropFilter: 'blur(8px)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '9999px',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.8)'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(15, 23, 42, 0.8)'}
                     title="Clear all lights"
                 >
-                    <Trash2 size={20} />
+                    <Trash2 size={18} />
                 </button>
                 <button
                     onClick={onReset}
-                    className="p-2 bg-slate-800/80 backdrop-blur text-white rounded-full hover:bg-slate-700 transition-colors"
-                    title="Close preview"
+                    style={{
+                        padding: '0.5rem',
+                        backgroundColor: 'rgba(15, 23, 42, 0.8)',
+                        backdropFilter: 'blur(8px)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '9999px',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(30, 41, 59, 0.9)'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(15, 23, 42, 0.8)'}
+                    title="Upload new photo"
                 >
-                    <X size={20} />
+                    <X size={18} />
                 </button>
             </div>
 
+            {/* Image Container */}
             <div
                 ref={containerRef}
-                className="relative w-full cursor-crosshair"
+                style={{
+                    position: 'relative',
+                    width: '100%',
+                    cursor: 'crosshair'
+                }}
                 onClick={handleImageClick}
             >
                 <img
                     src={image}
                     alt="Home Preview"
-                    className="w-full h-auto object-contain max-h-[70vh]"
+                    style={{
+                        width: '100%',
+                        height: 'auto',
+                        objectFit: 'contain',
+                        maxHeight: '70vh',
+                        display: 'block'
+                    }}
                 />
 
-                {/* Overlay Instructions */}
+                {/* Instructions Overlay */}
                 {lights.length === 0 && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="bg-black/50 backdrop-blur-sm px-6 py-3 rounded-full text-white font-medium">
-                            Tap anywhere to place lights
+                    <div
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            pointerEvents: 'none'
+                        }}
+                    >
+                        <div
+                            style={{
+                                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                                backdropFilter: 'blur(4px)',
+                                padding: '0.75rem 1.5rem',
+                                borderRadius: '9999px',
+                                color: 'white',
+                                fontWeight: 500,
+                                fontSize: '0.875rem'
+                            }}
+                        >
+                            Click anywhere to place lights
                         </div>
                     </div>
                 )}
@@ -69,23 +134,21 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                 {lights.map((light, index) => (
                     <div
                         key={index}
-                        className="absolute w-4 h-4 rounded-full transform -translate-x-1/2 -translate-y-1/2"
                         style={{
+                            position: 'absolute',
                             left: `${light.x}%`,
                             top: `${light.y}%`,
-                            background: light.type.color.includes('gradient') ? light.type.color : light.type.color,
-                            boxShadow: `0 0 15px 2px ${light.type.glow}, 0 0 30px 5px ${light.type.glow}`,
+                            width: '1rem',
+                            height: '1rem',
+                            borderRadius: '9999px',
+                            transform: 'translate(-50%, -50%)',
+                            background: light.type.color,
+                            boxShadow: `0 0 15px 2px ${light.type.glow}, 0 0 30px 5px ${light.type.glow}`
                         }}
                     />
                 ))}
             </div>
-
-            <div className="p-4 bg-slate-800/50 border-t border-slate-700">
-                <p className="text-center text-slate-400 text-sm">
-                    Selected: <span className="text-white font-medium">{selectedLight?.name || 'None'}</span>
-                </p>
-            </div>
-        </motion.div>
+        </div>
     );
 };
 

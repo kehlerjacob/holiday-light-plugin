@@ -25,19 +25,20 @@ function App({ onClose }) {
         padding: '1rem'
       }}
     >
-      {/* Compact Modal Card */}
+      {/* Modal Card - Expands when image is uploaded */}
       <div
         style={{
           backgroundColor: '#0f172a',
           borderRadius: '1rem',
           border: '1px solid #1e293b',
-          maxWidth: '32rem',
+          maxWidth: image ? '80rem' : '32rem', // Expand to 80rem after upload
           width: '100%',
           maxHeight: '90vh',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          transition: 'max-width 0.3s ease-in-out' // Smooth expansion
         }}
       >
         {/* Minimal Header - Just close button */}
@@ -74,8 +75,8 @@ function App({ onClose }) {
           </button>
         </div>
 
-        {/* Main Content - Compact */}
-        <div style={{ padding: '1.5rem', overflowY: 'auto' }}>
+        {/* Main Content */}
+        <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
           {!image ? (
             <div style={{ textAlign: 'center' }}>
               <h2
@@ -91,18 +92,26 @@ function App({ onClose }) {
               <ImageUploader onImageSelect={setImage} />
             </div>
           ) : (
-            <div>
-              <PreviewCanvas
-                image={image}
-                selectedLight={selectedLight}
-                onReset={() => {
-                  setImage(null);
-                  setSelectedLight(null);
-                }}
-              />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%' }}>
+              {/* Preview Canvas - Takes most of the space */}
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <PreviewCanvas
+                  image={image}
+                  selectedLight={selectedLight}
+                  onReset={() => {
+                    setImage(null);
+                    setSelectedLight(null);
+                  }}
+                />
+              </div>
 
-              {/* Light Selector */}
-              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #1e293b' }}>
+              {/* Light Selector - Compact footer */}
+              <div
+                style={{
+                  paddingTop: '1rem',
+                  borderTop: '1px solid #1e293b'
+                }}
+              >
                 <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
                   Select Light Style
                 </p>
