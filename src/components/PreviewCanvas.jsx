@@ -36,8 +36,11 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
         return { x, y };
     };
 
+    // Track if we're dragging to prevent click events after drag
+    const isDraggingRef = useRef(false);
+
     const handleClick = (e) => {
-        if (showLights || isDrawing) return;
+        if (showLights || isDrawing || isDraggingRef.current) return;
 
         const coords = getCoordinates(e);
         if (!coords) return;
@@ -54,6 +57,7 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     const handleMouseDown = (e) => {
         if (showLights || clickPoint) return;
 
+        isDraggingRef.current = false;
         setIsDrawing(true);
         const coords = getCoordinates(e);
         if (coords) {
@@ -63,6 +67,9 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
 
     const handleMouseMove = (e) => {
         if (!isDrawing || showLights) return;
+
+        isDraggingRef.current = true; // We are definitely dragging now
+
         const coords = getCoordinates(e);
         if (coords) {
             setCurrentLine(prev => [...prev, coords]);
@@ -71,11 +78,17 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
 
     const handleMouseUp = () => {
         if (!isDrawing) return;
+
         setIsDrawing(false);
         if (currentLine.length > 1) {
             setLines(prev => [...prev, currentLine]);
         }
         setCurrentLine([]);
+
+        // Reset dragging flag after a short delay to allow click event to fire (and be blocked)
+        setTimeout(() => {
+            isDraggingRef.current = false;
+        }, 100);
     };
 
     const clearLines = () => {
@@ -98,25 +111,44 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     const generateLights = () => {
         if (!selectedLight) return [];
         const lights = [];
-        const spacing = 2.5;
+        const spacing = 3.5; // Increased spacing for better bulb separation
 
         lines.forEach(line => {
+            if (line.length < 2) return;
+
+            // Calculate total length of the line
+            let totalLength = 0;
+            const segments = [];
+
             for (let i = 0; i < line.length - 1; i++) {
                 const start = line[i];
                 const end = line[i + 1];
-                const distance = Math.sqrt(
+                const dist = Math.sqrt(
                     Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)
                 );
-                const numLights = Math.max(1, Math.floor(distance / spacing));
+                segments.push({ start, end, dist, accumulated: totalLength });
+                totalLength += dist;
+            }
 
-                for (let j = 0; j <= numLights; j++) {
-                    const t = j / numLights;
+            // Place lights at fixed intervals
+            let currentDist = 0;
+            while (currentDist <= totalLength) {
+                // Find which segment this distance falls into
+                const segment = segments.find(s =>
+                    currentDist >= s.accumulated &&
+                    currentDist <= s.accumulated + s.dist
+                );
+
+                if (segment) {
+                    const segmentProgress = (currentDist - segment.accumulated) / segment.dist;
                     lights.push({
-                        x: start.x + (end.x - start.x) * t,
-                        y: start.y + (end.y - start.y) * t,
+                        x: segment.start.x + (segment.end.x - segment.start.x) * segmentProgress,
+                        y: segment.start.y + (segment.end.y - segment.start.y) * segmentProgress,
                         type: selectedLight
                     });
                 }
+
+                currentDist += spacing;
             }
         });
         return lights;
