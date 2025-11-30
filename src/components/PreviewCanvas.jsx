@@ -241,12 +241,12 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                                 points={line.map(p => `${p.x},${p.y}`).join(' ')}
                                 fill="none"
                                 stroke="#60a5fa"
-                                strokeWidth="2"
+                                strokeWidth="6"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                strokeOpacity="0.6"
+                                strokeOpacity="0.7"
                                 vectorEffect="non-scaling-stroke"
-                                style={{ filter: 'drop-shadow(0 0 4px rgba(96, 165, 250, 0.6))' }}
+                                style={{ filter: 'drop-shadow(0 0 6px rgba(96, 165, 250, 0.8))' }}
                             />
                         </svg>
                     ))}
@@ -269,33 +269,14 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                                 points={currentLine.map(p => `${p.x},${p.y}`).join(' ')}
                                 fill="none"
                                 stroke="#93c5fd"
-                                strokeWidth="2"
+                                strokeWidth="5"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                strokeOpacity="0.5"
+                                strokeOpacity="0.6"
                                 vectorEffect="non-scaling-stroke"
-                                style={{ filter: 'drop-shadow(0 0 4px rgba(147, 197, 253, 0.5))' }}
+                                style={{ filter: 'drop-shadow(0 0 6px rgba(147, 197, 253, 0.7))' }}
                             />
                         </svg>
-                    )}
-
-                    {/* Show first click point */}
-                    {!showLights && clickPoint && (
-                        <div
-                            style={{
-                                position: 'absolute',
-                                left: `${clickPoint.x}%`,
-                                top: `${clickPoint.y}%`,
-                                width: '16px',
-                                height: '16px',
-                                borderRadius: '50%',
-                                backgroundColor: '#3b82f6',
-                                border: '3px solid white',
-                                transform: 'translate(-50%, -50%)',
-                                boxShadow: '0 0 8px rgba(59, 130, 246, 0.8)',
-                                pointerEvents: 'none'
-                            }}
-                        />
                     )}
                 </div>
 
