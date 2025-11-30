@@ -24,13 +24,34 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
     const sessionToken = useRef(null);
 
     useEffect(() => {
-        if (apiKey && window.google && window.google.maps && window.google.maps.places) {
-            if (!autocompleteService.current) {
-                autocompleteService.current = new window.google.maps.places.AutocompleteService();
-                sessionToken.current = new window.google.maps.places.AutocompleteSessionToken();
+        const initService = () => {
+            if (window.google && window.google.maps && window.google.maps.places) {
+                try {
+                    if (!autocompleteService.current) {
+                        autocompleteService.current = new window.google.maps.places.AutocompleteService();
+                        sessionToken.current = new window.google.maps.places.AutocompleteSessionToken();
+                    }
+                    return true;
+                } catch (e) {
+                    console.error("Error initializing Maps service:", e);
+                    return false;
+                }
             }
-        } else if (apiKey) {
-            loadGoogleMaps(apiKey);
+            return false;
+        };
+
+        if (apiKey) {
+            if (initService()) return;
+
+            if (!document.querySelector(`script[src*="maps.googleapis.com"]`)) {
+                loadGoogleMaps(apiKey);
+            } else {
+                // Script exists but not ready? Poll for it.
+                const interval = setInterval(() => {
+                    if (initService()) clearInterval(interval);
+                }, 200);
+                return () => clearInterval(interval);
+            }
         }
     }, [apiKey]);
 
@@ -44,16 +65,10 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
         script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
         script.async = true;
         script.onload = () => {
-            try {
-                autocompleteService.current = new window.google.maps.places.AutocompleteService();
-                sessionToken.current = new window.google.maps.places.AutocompleteSessionToken();
-                setError(null);
-            } catch (e) {
-                console.error("Error initializing Google Maps services", e);
-            }
+            // Initialization handled by the poller/effect
         };
         script.onerror = () => {
-            setError('Invalid API Key or failed to load Google Maps');
+            setError('Failed to load Google Maps script. Check your internet connection.');
             setShowKeyInput(true);
         };
         document.body.appendChild(script);
@@ -64,7 +79,8 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
         if (apiKey.trim()) {
             localStorage.setItem('google_maps_key', apiKey);
             setShowKeyInput(false);
-            loadGoogleMaps(apiKey);
+            // Force reload if needed
+            window.location.reload();
         }
     };
 
@@ -72,24 +88,42 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
         const value = e.target.value;
         setQuery(value);
 
-        if (!value.trim() || !autocompleteService.current) {
+        if (!value.trim()) {
             setPredictions([]);
             return;
         }
 
+        if (!autocompleteService.current) {
+            // Service not ready yet
+            return;
+        }
+
         setIsLoading(true);
+        setError(null);
+
         autocompleteService.current.getPlacePredictions(
             {
                 input: value,
                 sessionToken: sessionToken.current,
-                types: ['address'], // Restrict to addresses
+                types: ['address'],
             },
             (results, status) => {
                 setIsLoading(false);
                 if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
                     setPredictions(results);
-                } else {
+                } else if (status === window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
                     setPredictions([]);
+                } else {
+                    console.error("Places API Error:", status);
+                    setPredictions([]);
+                    if (status === 'REQUEST_DENIED') {
+                        setError('API Key Error: Request Denied. Check API restrictions.');
+                        setShowKeyInput(true);
+                    } else if (status === 'OVER_QUERY_LIMIT') {
+                        setError('API Quota Exceeded.');
+                    } else {
+                        setError(`Maps Error: ${status}`);
+                    }
                 }
             }
         );
@@ -205,6 +239,21 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
                         </div>
                     )}
                 </div>
+
+                {/* Error Message */}
+                {error && (
+                    <div style={{
+                        marginTop: '0.5rem',
+                        padding: '0.5rem',
+                        backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                        border: '1px solid #ef4444',
+                        borderRadius: '0.5rem',
+                        color: '#fca5a5',
+                        fontSize: '0.875rem'
+                    }}>
+                        {error}
+                    </div>
+                )}
 
                 {/* Predictions Dropdown */}
                 {predictions.length > 0 && (
