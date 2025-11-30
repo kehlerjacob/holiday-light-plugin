@@ -13,14 +13,20 @@ function initWidget() {
   if (!container) {
     container = document.createElement('div');
     container.id = WIDGET_ID;
+
+    // CRITICAL: Set container to fill viewport so React app can render properly
+    container.style.position = 'fixed';
+    container.style.inset = '0';
+    container.style.zIndex = '9999';
+    container.style.display = 'block';
+
     document.body.appendChild(container);
 
     const root = createRoot(container);
     root.render(
       <StrictMode>
         <App onClose={() => {
-          // Optional: unmount or just hide. Hiding is faster for re-opening.
-          // For now, let's just hide the container
+          // Hide the container when closed
           container.style.display = 'none';
         }} />
       </StrictMode>
