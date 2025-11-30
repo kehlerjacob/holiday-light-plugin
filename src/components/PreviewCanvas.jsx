@@ -124,25 +124,58 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
             };
         });
 
-        // Smooth the snapped line
-        const smoothedPoints = [];
-        if (snappedPoints.length > 2) {
-            smoothedPoints.push(snappedPoints[0]);
-            for (let i = 1; i < snappedPoints.length - 1; i++) {
-                const prev = snappedPoints[i - 1];
-                const curr = snappedPoints[i];
-                const next = snappedPoints[i + 1];
+        // Ramer-Douglas-Peucker simplification
+        const simplifyLine = (points, epsilon) => {
+            if (points.length < 3) return points;
 
-                smoothedPoints.push({
-                    x: (prev.x + curr.x + next.x) / 3,
-                    y: (prev.y + curr.y + next.y) / 3
-                });
+            let dmax = 0;
+            let index = 0;
+            const end = points.length - 1;
+
+            for (let i = 1; i < end; i++) {
+                // Perpendicular distance from point to line segment
+                const d = perpendicularDistance(points[i], points[0], points[end]);
+                if (d > dmax) {
+                    index = i;
+                    dmax = d;
+                }
             }
-            smoothedPoints.push(snappedPoints[snappedPoints.length - 1]);
-            return smoothedPoints;
-        }
 
-        return snappedPoints;
+            if (dmax > epsilon) {
+                const recResults1 = simplifyLine(points.slice(0, index + 1), epsilon);
+                const recResults2 = simplifyLine(points.slice(index), epsilon);
+                return [...recResults1.slice(0, -1), ...recResults2];
+            } else {
+                return [points[0], points[end]];
+            }
+        };
+
+        const perpendicularDistance = (point, lineStart, lineEnd) => {
+            let dx = lineEnd.x - lineStart.x;
+            let dy = lineEnd.y - lineStart.y;
+            if (dx === 0 && dy === 0) {
+                return Math.sqrt(Math.pow(point.x - lineStart.x, 2) + Math.pow(point.y - lineStart.y, 2));
+            }
+
+            const t = ((point.x - lineStart.x) * dx + (point.y - lineStart.y) * dy) / (dx * dx + dy * dy);
+
+            let closestX, closestY;
+            if (t < 0) {
+                closestX = lineStart.x;
+                closestY = lineStart.y;
+            } else if (t > 1) {
+                closestX = lineEnd.x;
+                closestY = lineEnd.y;
+            } else {
+                closestX = lineStart.x + t * dx;
+                closestY = lineStart.y + t * dy;
+            }
+
+            return Math.sqrt(Math.pow(point.x - closestX, 2) + Math.pow(point.y - closestY, 2));
+        };
+
+        // Apply simplification (epsilon of 0.5% is usually good for this scale)
+        return simplifyLine(snappedPoints, 0.5);
     };
 
     const handleMouseDown = (e) => {
