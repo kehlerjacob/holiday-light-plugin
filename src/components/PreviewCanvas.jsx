@@ -1,5 +1,57 @@
 import React, { useRef, useState, useEffect } from 'react';
 
+// C9 Bulb Component
+const C9Bulb = ({ color, glow }) => (
+    <svg width="24" height="36" viewBox="0 0 24 36" style={{ overflow: 'visible' }}>
+        <defs>
+            <radialGradient id={`bulb-gradient-${color}`} cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                <stop offset="0%" stopColor="#fff" stopOpacity="0.9" />
+                <stop offset="40%" stopColor={color} stopOpacity="0.8" />
+                <stop offset="100%" stopColor={color} stopOpacity="0.4" />
+            </radialGradient>
+            <filter id={`glow-${color}`} x="-100%" y="-100%" width="300%" height="300%">
+                <feGaussianBlur stdDeviation="6" result="coloredBlur" />
+                <feMerge>
+                    <feMergeNode in="coloredBlur" />
+                    <feMergeNode in="SourceGraphic" />
+                </feMerge>
+            </filter>
+        </defs>
+
+        {/* Glow Effect */}
+        <circle cx="12" cy="14" r="16" fill={glow} filter={`url(#glow-${color})`} opacity="0.6" />
+
+        {/* Socket Base */}
+        <rect x="8" y="24" width="8" height="6" rx="1" fill="#1a472a" />
+        <path d="M8 24 L16 24 L15 28 L9 28 Z" fill="#0f2b19" />
+
+        {/* Bulb Shape - C9 Conical */}
+        <path
+            d="M12 2 
+         C 16 2, 20 8, 20 14 
+         C 20 20, 16 26, 12 26 
+         C 8 26, 4 20, 4 14 
+         C 4 8, 8 2, 12 2 Z"
+            fill={`url(#bulb-gradient-${color})`}
+            stroke={color}
+            strokeWidth="0.5"
+            strokeOpacity="0.5"
+        />
+
+        {/* Facet/Reflection Highlight */}
+        <path
+            d="M12 4 
+         C 14 4, 16 8, 16 12 
+         C 16 16, 14 20, 12 20"
+            fill="none"
+            stroke="#fff"
+            strokeWidth="1"
+            strokeOpacity="0.4"
+            strokeLinecap="round"
+        />
+    </svg>
+);
+
 const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     const [lines, setLines] = useState([]);
     const [currentLine, setCurrentLine] = useState([]);
@@ -261,10 +313,22 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
 
                 if (segment) {
                     const segmentProgress = (currentDist - segment.accumulated) / segment.dist;
+                    // Get light color - handle multicolor/gradient
+                    let color = selectedLight.color;
+                    if (selectedLight.id === 'multicolor' || selectedLight.id === 'red-green') {
+                        // Pick a color based on position for multicolor
+                        const colors = selectedLight.id === 'multicolor'
+                            ? ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7']
+                            : ['#ef4444', '#22c55e'];
+                        const colorIndex = Math.floor(currentDist / spacing) % colors.length;
+                        color = colors[colorIndex];
+                    }
+
                     lights.push({
                         x: segment.start.x + (segment.end.x - segment.start.x) * segmentProgress,
                         y: segment.start.y + (segment.end.y - segment.start.y) * segmentProgress,
-                        type: selectedLight
+                        color: color,
+                        glow: selectedLight.glow
                     });
                 }
 
@@ -500,15 +564,14 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                             position: 'absolute',
                             left: `${light.x}%`,
                             top: `${light.y}%`,
-                            width: '0.75rem',
-                            height: '0.75rem',
-                            borderRadius: '9999px',
-                            transform: 'translate(-50%, -50%)',
-                            background: light.type.color,
-                            boxShadow: `0 0 12px 2px ${light.type.glow}, 0 0 24px 4px ${light.type.glow}`,
+                            width: '24px',
+                            height: '36px',
+                            transform: 'translate(-50%, -100%)', // Anchor at bottom (socket)
                             pointerEvents: 'none'
                         }}
-                    />
+                    >
+                        <C9Bulb color={light.color} glow={light.glow} />
+                    </div>
                 ))}
             </div>
 
