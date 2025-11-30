@@ -187,19 +187,27 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     };
 
     const generateLights = () => {
-        if (!selectedLight) return [];
+        if (!selectedLight || containerSize.width === 0 || containerSize.height === 0) return [];
         const lights = [];
-        const spacing = 4.0; // Increased spacing to prevent bunching
+        // Spacing in pixels (fixed physical distance)
+        // User requested "much closer", so ~20px seems appropriate for smaller bulbs
+        const spacingPx = 20;
 
         lines.forEach(line => {
             if (line.length < 2) return;
 
+            // Convert line points to pixels for calculation
+            const pixelPoints = line.map(p => ({
+                x: (p.x / 100) * containerSize.width,
+                y: (p.y / 100) * containerSize.height
+            }));
+
             let totalLength = 0;
             const segments = [];
 
-            for (let i = 0; i < line.length - 1; i++) {
-                const start = line[i];
-                const end = line[i + 1];
+            for (let i = 0; i < pixelPoints.length - 1; i++) {
+                const start = pixelPoints[i];
+                const end = pixelPoints[i + 1];
                 const dist = Math.sqrt(
                     Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)
                 );
@@ -217,24 +225,33 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                 if (segment) {
                     const segmentProgress = (currentDist - segment.accumulated) / segment.dist;
 
+                    // Interpolate in pixel space
+                    const pixelX = segment.start.x + (segment.end.x - segment.start.x) * segmentProgress;
+                    const pixelY = segment.start.y + (segment.end.y - segment.start.y) * segmentProgress;
+
+                    // Convert back to percentage for responsive rendering
+                    const percentX = (pixelX / containerSize.width) * 100;
+                    const percentY = (pixelY / containerSize.height) * 100;
+
                     let color = selectedLight.color;
                     if (selectedLight.id === 'multicolor' || selectedLight.id === 'red-green') {
                         const colors = selectedLight.id === 'multicolor'
                             ? ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7']
                             : ['#ef4444', '#22c55e'];
-                        const colorIndex = Math.floor(currentDist / spacing) % colors.length;
+                        // Use index based on distance to keep pattern consistent
+                        const colorIndex = Math.floor(currentDist / spacingPx) % colors.length;
                         color = colors[colorIndex];
                     }
 
                     lights.push({
-                        x: segment.start.x + (segment.end.x - segment.start.x) * segmentProgress,
-                        y: segment.start.y + (segment.end.y - segment.start.y) * segmentProgress,
+                        x: percentX,
+                        y: percentY,
                         color: color,
                         glow: selectedLight.glow
                     });
                 }
 
-                currentDist += spacing;
+                currentDist += spacingPx;
             }
         });
         return lights;
@@ -458,8 +475,8 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                             position: 'absolute',
                             left: `${light.x}%`,
                             top: `${light.y}%`,
-                            width: '16px',
-                            height: '24px',
+                            width: '8px',
+                            height: '12px',
                             transform: 'translate(-50%, 0)', // Anchor at top (socket)
                             pointerEvents: 'none'
                         }}
