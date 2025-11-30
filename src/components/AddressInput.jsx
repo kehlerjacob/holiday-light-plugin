@@ -89,6 +89,16 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
         }
     };
 
+    const [debugLog, setDebugLog] = useState([]);
+
+    const addLog = (msg) => {
+        console.log(msg);
+        setDebugLog(prev => [...prev.slice(-4), msg]); // Keep last 5 logs
+    };
+
+    // Debounce timer ref
+    const debounceTimer = useRef(null);
+
     const handleInputChange = (e) => {
         const value = e.target.value;
         setQuery(value);
@@ -99,39 +109,50 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
         }
 
         if (!mapsLoaded || !autocompleteService.current) {
-            console.warn("Maps service not ready yet");
+            addLog("Maps service not ready yet");
             return;
         }
 
         setIsLoading(true);
         setError(null);
 
-        autocompleteService.current.getPlacePredictions(
-            {
-                input: value,
-                sessionToken: sessionToken.current,
-                types: ['address'],
-            },
-            (results, status) => {
-                setIsLoading(false);
-                if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
-                    setPredictions(results);
-                } else if (status === window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
-                    setPredictions([]);
-                } else {
-                    console.error("Places API Error:", status);
-                    setPredictions([]);
-                    if (status === 'REQUEST_DENIED') {
-                        setError('API Key Error: Request Denied. Check API restrictions.');
-                        setShowKeyInput(true);
-                    } else if (status === 'OVER_QUERY_LIMIT') {
-                        setError('API Quota Exceeded.');
+        // Clear existing timer
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+
+        // Set new timer
+        debounceTimer.current = setTimeout(() => {
+            addLog(`Searching for: "${value}"...`);
+
+            autocompleteService.current.getPlacePredictions(
+                {
+                    input: value,
+                    sessionToken: sessionToken.current,
+                    // Removed 'types' restriction to allow broader results
+                },
+                (results, status) => {
+                    setIsLoading(false);
+                    addLog(`API Status: ${status}`);
+
+                    if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
+                        setPredictions(results);
+                        addLog(`Found ${results.length} results`);
+                    } else if (status === window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+                        setPredictions([]);
+                        addLog("Zero results found");
                     } else {
-                        setError(`Maps Error: ${status}`);
+                        setPredictions([]);
+                        if (status === 'REQUEST_DENIED') {
+                            setError('API Key Error: Request Denied. Check API restrictions.');
+                            setShowKeyInput(true);
+                        } else if (status === 'OVER_QUERY_LIMIT') {
+                            setError('API Quota Exceeded.');
+                        } else {
+                            setError(`Maps Error: ${status}`);
+                        }
                     }
                 }
-            }
-        );
+            );
+        }, 300); // 300ms debounce
     };
 
     const handleSelect = (prediction) => {
@@ -321,6 +342,13 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
             </div>
 
             <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+                {/* Debug Log (Temporary) */}
+                <div style={{ marginTop: '1rem', fontSize: '0.7rem', color: '#64748b', fontFamily: 'monospace', textAlign: 'left' }}>
+                    {debugLog.map((log, i) => (
+                        <div key={i}>{log}</div>
+                    ))}
+                </div>
+
                 <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
                     or
                 </p>
