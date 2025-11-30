@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 
 const LIGHT_TYPES = [
     { id: 'warm-white', name: 'Warm White', color: '#fef3c7', glow: 'rgba(254, 243, 199, 0.6)' },
@@ -11,30 +10,58 @@ const LIGHT_TYPES = [
 
 const LightSelector = ({ selectedLight, onSelectLight }) => {
     return (
-        <div className="w-full overflow-x-auto py-4 px-2 no-scrollbar">
-            <div className="flex gap-4 min-w-max px-2">
+        <div style={{ width: '100%', overflowX: 'auto', padding: '0.5rem 0' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', minWidth: 'max-content' }}>
                 {LIGHT_TYPES.map((light) => (
-                    <motion.button
+                    <button
                         key={light.id}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
                         onClick={() => onSelectLight(light)}
-                        className={`relative flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-300 ${selectedLight?.id === light.id
-                                ? 'border-blue-500 bg-slate-800 ring-2 ring-blue-500/20'
-                                : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
-                            }`}
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.75rem',
+                            background: selectedLight?.id === light.id ? '#1e293b' : 'transparent',
+                            border: selectedLight?.id === light.id ? '2px solid #3b82f6' : '2px solid #334155',
+                            borderRadius: '0.75rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            minWidth: '80px'
+                        }}
+                        onMouseEnter={(e) => {
+                            if (selectedLight?.id !== light.id) {
+                                e.currentTarget.style.borderColor = '#475569';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            if (selectedLight?.id !== light.id) {
+                                e.currentTarget.style.borderColor = '#334155';
+                            }
+                        }}
                     >
                         <div
-                            className="w-12 h-12 rounded-full shadow-lg"
                             style={{
+                                width: '2.5rem',
+                                height: '2.5rem',
+                                borderRadius: '50%',
                                 background: light.color,
-                                boxShadow: selectedLight?.id === light.id ? `0 0 20px ${light.glow}` : 'none'
+                                boxShadow: selectedLight?.id === light.id
+                                    ? `0 0 16px ${light.glow}`
+                                    : '0 2px 4px rgba(0, 0, 0, 0.2)'
                             }}
                         />
-                        <span className="text-sm font-medium text-slate-300 whitespace-nowrap">
+                        <span
+                            style={{
+                                fontSize: '0.75rem',
+                                fontWeight: 500,
+                                color: selectedLight?.id === light.id ? '#ffffff' : '#94a3b8',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
                             {light.name}
                         </span>
-                    </motion.button>
+                    </button>
                 ))}
             </div>
         </div>

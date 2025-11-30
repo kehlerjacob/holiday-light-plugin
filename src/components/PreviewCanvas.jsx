@@ -240,12 +240,13 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                             <polyline
                                 points={line.map(p => `${p.x},${p.y}`).join(' ')}
                                 fill="none"
-                                stroke="#3b82f6"
-                                strokeWidth="0.5"
+                                stroke="#60a5fa"
+                                strokeWidth="2"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
+                                strokeOpacity="0.6"
                                 vectorEffect="non-scaling-stroke"
-                                style={{ filter: 'drop-shadow(0 0 2px rgba(59, 130, 246, 0.8))' }}
+                                style={{ filter: 'drop-shadow(0 0 4px rgba(96, 165, 250, 0.6))' }}
                             />
                         </svg>
                     ))}
@@ -267,12 +268,13 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                             <polyline
                                 points={currentLine.map(p => `${p.x},${p.y}`).join(' ')}
                                 fill="none"
-                                stroke="#60a5fa"
-                                strokeWidth="0.5"
+                                stroke="#93c5fd"
+                                strokeWidth="2"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
+                                strokeOpacity="0.5"
                                 vectorEffect="non-scaling-stroke"
-                                style={{ filter: 'drop-shadow(0 0 2px rgba(96, 165, 250, 0.8))' }}
+                                style={{ filter: 'drop-shadow(0 0 4px rgba(147, 197, 253, 0.5))' }}
                             />
                         </svg>
                     )}
