@@ -2,8 +2,11 @@ import React, { useRef, useState, useEffect } from 'react';
 
 // C9 Bulb Component - Inverted (Socket at top)
 const C9Bulb = ({ color, glow }) => {
+    // Defensive check for color
+    if (!color) return null;
+
     // Sanitize color for ID use (remove #)
-    const safeColor = color.replace('#', '');
+    const safeColor = typeof color === 'string' ? color.replace('#', '') : 'default';
 
     return (
         <svg width="16" height="24" viewBox="0 0 24 36" style={{ overflow: 'visible' }}>
@@ -23,7 +26,7 @@ const C9Bulb = ({ color, glow }) => {
             </defs>
 
             {/* Glow Effect */}
-            <circle cx="12" cy="22" r="16" fill={glow} filter={`url(#glow-${safeColor})`} opacity="0.6" />
+            <circle cx="12" cy="22" r="16" fill={glow || color} filter={`url(#glow-${safeColor})`} opacity="0.6" />
 
             {/* Socket Base (At Top) */}
             <rect x="8" y="0" width="8" height="6" rx="1" fill="#1a472a" />
