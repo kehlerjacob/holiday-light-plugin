@@ -1,12 +1,17 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 
 const PreviewCanvas = ({ image, selectedLight, onReset }) => {
     const [lines, setLines] = useState([]);
     const [currentLine, setCurrentLine] = useState([]);
     const [isDrawing, setIsDrawing] = useState(false);
     const [showLights, setShowLights] = useState(false);
-    const [clickPoint, setClickPoint] = useState(null); // Single point for click mode
+    const [clickPoint, setClickPoint] = useState(null);
     const containerRef = useRef(null);
+
+    // Debug: log state changes
+    useEffect(() => {
+        console.log('Lines:', lines.length, 'Click point:', clickPoint, 'Drawing:', isDrawing);
+    }, [lines, clickPoint, isDrawing]);
 
     const getCoordinates = (e) => {
         if (!containerRef.current) return null;
@@ -22,31 +27,35 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
         return { x, y };
     };
 
-    // Click mode - connect points with straight lines
     const handleClick = (e) => {
+        // Prevent if showing lights or currently dragging
         if (showLights || isDrawing) return;
 
         const coords = getCoordinates(e);
         if (!coords) return;
 
+        console.log('Click at:', coords);
+
         if (!clickPoint) {
-            // First click - set the starting point
+            console.log('Setting first point');
             setClickPoint(coords);
         } else {
-            // Second click - create a line from first point to second point
+            console.log('Creating line from', clickPoint, 'to', coords);
             const newLine = [clickPoint, coords];
             setLines([...lines, newLine]);
-            setClickPoint(null); // Reset for next line
+            setClickPoint(null);
         }
     };
 
-    // Drag mode - draw freeform lines
     const handleMouseDown = (e) => {
         if (showLights) return;
 
-        // Clear any pending click point when starting to drag
-        setClickPoint(null);
+        // If there's a click point, this click should complete the line, not start dragging
+        if (clickPoint) {
+            return;
+        }
 
+        console.log('Starting drag');
         setIsDrawing(true);
         const coords = getCoordinates(e);
         if (coords) {
@@ -58,15 +67,16 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
         if (!isDrawing || showLights) return;
         const coords = getCoordinates(e);
         if (coords) {
-            setCurrentLine([...currentLine, coords]);
+            setCurrentLine(prev => [...prev, coords]);
         }
     };
 
     const handleMouseUp = () => {
         if (!isDrawing) return;
+        console.log('Ending drag, points:', currentLine.length);
         setIsDrawing(false);
         if (currentLine.length > 1) {
-            setLines([...lines, currentLine]);
+            setLines(prev => [...prev, currentLine]);
         }
         setCurrentLine([]);
     };
@@ -80,7 +90,7 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
 
     const previewDesign = () => {
         if (lines.length === 0) return;
-        setClickPoint(null); // Clear any pending click point
+        setClickPoint(null);
         setShowLights(true);
     };
 
@@ -88,7 +98,6 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
         setShowLights(false);
     };
 
-    // Generate light positions along all lines
     const generateLights = () => {
         if (!selectedLight) return [];
         const lights = [];
@@ -151,11 +160,8 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                         borderRadius: '0.5rem',
                         cursor: 'pointer',
                         fontSize: '0.875rem',
-                        fontWeight: 600,
-                        transition: 'background-color 0.2s'
+                        fontWeight: 600
                     }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.9)'}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(15, 23, 42, 0.9)'}
                 >
                     Clear All
                 </button>
@@ -170,11 +176,8 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                         borderRadius: '0.5rem',
                         cursor: 'pointer',
                         fontSize: '0.875rem',
-                        fontWeight: 600,
-                        transition: 'background-color 0.2s'
+                        fontWeight: 600
                     }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(30, 41, 59, 0.9)'}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = 'rgba(15, 23, 42, 0.9)'}
                 >
                     New Photo
                 </button>
@@ -188,17 +191,14 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                     width: '100%',
                     cursor: showLights ? 'default' : 'crosshair',
                     userSelect: 'none',
-                    WebkitUserSelect: 'none'
+                    WebkitUserSelect: 'none',
+                    touchAction: 'none'
                 }}
                 onClick={handleClick}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
-                onTouchStart={(e) => {
-                    e.preventDefault();
-                    handleClick(e);
-                }}
             >
                 <img
                     src={image}
@@ -214,8 +214,8 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                     draggable={false}
                 />
 
-                {/* SVG Canvas for Drawing Lines */}
-                <svg
+                {/* Canvas overlay for lines - ABOVE image */}
+                <div
                     style={{
                         position: 'absolute',
                         top: 0,
@@ -225,48 +225,76 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                         pointerEvents: 'none'
                     }}
                 >
-                    {/* Draw completed lines - ALWAYS VISIBLE */}
-                    {lines.map((line, lineIndex) => (
-                        <polyline
+                    {/* Draw completed lines as DIVs for better visibility */}
+                    {!showLights && lines.map((line, lineIndex) => (
+                        <svg
                             key={`line-${lineIndex}`}
-                            points={line.map(p => `${p.x}%,${p.y}%`).join(' ')}
-                            fill="none"
-                            stroke={showLights ? 'transparent' : '#3b82f6'}
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            opacity="0.8"
-                        />
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                pointerEvents: 'none'
+                            }}
+                        >
+                            <polyline
+                                points={line.map(p => `${p.x}%,${p.y}%`).join(' ')}
+                                fill="none"
+                                stroke="#3b82f6"
+                                strokeWidth="4"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                style={{ filter: 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.5))' }}
+                            />
+                        </svg>
                     ))}
 
                     {/* Draw current line being drawn */}
                     {!showLights && currentLine.length > 0 && (
-                        <polyline
-                            points={currentLine.map(p => `${p.x}%,${p.y}%`).join(' ')}
-                            fill="none"
-                            stroke="#60a5fa"
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            opacity="0.6"
-                        />
+                        <svg
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                pointerEvents: 'none'
+                            }}
+                        >
+                            <polyline
+                                points={currentLine.map(p => `${p.x}%,${p.y}%`).join(' ')}
+                                fill="none"
+                                stroke="#60a5fa"
+                                strokeWidth="4"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                style={{ filter: 'drop-shadow(0 0 4px rgba(96, 165, 250, 0.5))' }}
+                            />
+                        </svg>
                     )}
 
                     {/* Show first click point */}
                     {!showLights && clickPoint && (
-                        <circle
-                            cx={`${clickPoint.x}%`}
-                            cy={`${clickPoint.y}%`}
-                            r="6"
-                            fill="#3b82f6"
-                            stroke="white"
-                            strokeWidth="2"
-                            opacity="0.9"
+                        <div
+                            style={{
+                                position: 'absolute',
+                                left: `${clickPoint.x}%`,
+                                top: `${clickPoint.y}%`,
+                                width: '16px',
+                                height: '16px',
+                                borderRadius: '50%',
+                                backgroundColor: '#3b82f6',
+                                border: '3px solid white',
+                                transform: 'translate(-50%, -50%)',
+                                boxShadow: '0 0 8px rgba(59, 130, 246, 0.8)',
+                                pointerEvents: 'none'
+                            }}
                         />
                     )}
-                </svg>
+                </div>
 
-                {/* Instructions Overlay */}
+                {/* Instructions */}
                 {!showLights && lines.length === 0 && currentLine.length === 0 && !clickPoint && (
                     <div
                         style={{
@@ -287,17 +315,16 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                                 color: 'white',
                                 fontWeight: 500,
                                 fontSize: '0.875rem',
-                                textAlign: 'center',
-                                maxWidth: '80%'
+                                textAlign: 'center'
                             }}
                         >
-                            Click two points to draw a straight line<br />
+                            Click two points to draw a line<br />
                             or click and drag to draw freeform
                         </div>
                     </div>
                 )}
 
-                {/* Render Lights when previewing */}
+                {/* Render Lights */}
                 {showLights && lightsToRender.map((light, index) => (
                     <div
                         key={`light-${index}`}
