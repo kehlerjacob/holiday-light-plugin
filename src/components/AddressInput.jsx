@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Search, Loader, Image as ImageIcon } from 'lucide-react';
+import { MapPin, Search, Loader, Image as ImageIcon, Settings } from 'lucide-react';
 
 const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
     const [query, setQuery] = useState('');
@@ -13,9 +13,14 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
         return localStorage.getItem('google_maps_key') || defaultKey;
     });
 
+    const [replicateKey, setReplicateKey] = useState(() => {
+        return localStorage.getItem('replicate_api_token') || '';
+    });
+
     const [showKeyInput, setShowKeyInput] = useState(() => {
-        const key = localStorage.getItem('google_maps_key') || defaultKey;
-        return !key;
+        const mapsKey = localStorage.getItem('google_maps_key') || defaultKey;
+        // Show input if Maps key is missing. Replicate key is optional for initial load.
+        return !mapsKey;
     });
 
     const [error, setError] = useState(null);
@@ -84,6 +89,9 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
         e.preventDefault();
         if (apiKey.trim()) {
             localStorage.setItem('google_maps_key', apiKey);
+            if (replicateKey.trim()) {
+                localStorage.setItem('replicate_api_token', replicateKey);
+            }
             setShowKeyInput(false);
             window.location.reload();
         }
@@ -167,26 +175,47 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
                     border: '1px solid #334155',
                     textAlign: 'center'
                 }}>
-                    <h3 style={{ color: 'white', marginBottom: '1rem', fontSize: '1.1rem' }}>Setup Google Maps</h3>
+                    <h3 style={{ color: 'white', marginBottom: '1rem', fontSize: '1.1rem' }}>App Configuration</h3>
                     <p style={{ color: '#94a3b8', marginBottom: '1rem', fontSize: '0.9rem' }}>
-                        To use the address feature, you need a Google Maps API Key with <strong>Places</strong> and <strong>Street View Static</strong> APIs enabled.
+                        Please enter your API keys to continue.
                     </p>
-                    <form onSubmit={handleKeySubmit} style={{ display: 'flex', gap: '0.5rem' }}>
-                        <input
-                            type="text"
-                            value={apiKey}
-                            onChange={(e) => setApiKey(e.target.value)}
-                            placeholder="Enter API Key"
-                            style={{
-                                flex: 1,
-                                padding: '0.75rem',
-                                borderRadius: '0.5rem',
-                                border: '1px solid #475569',
-                                backgroundColor: '#0f172a',
-                                color: 'white',
-                                outline: 'none'
-                            }}
-                        />
+                    <form onSubmit={handleKeySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div>
+                            <label style={{ display: 'block', textAlign: 'left', color: '#cbd5e1', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Google Maps API Key (Required)</label>
+                            <input
+                                type="text"
+                                value={apiKey}
+                                onChange={(e) => setApiKey(e.target.value)}
+                                placeholder="AIzaSy..."
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem',
+                                    borderRadius: '0.5rem',
+                                    border: '1px solid #475569',
+                                    backgroundColor: '#0f172a',
+                                    color: 'white',
+                                    outline: 'none'
+                                }}
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', textAlign: 'left', color: '#cbd5e1', fontSize: '0.8rem', marginBottom: '0.25rem' }}>Replicate API Key (Optional, for AI)</label>
+                            <input
+                                type="text"
+                                value={replicateKey}
+                                onChange={(e) => setReplicateKey(e.target.value)}
+                                placeholder="r8_..."
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem',
+                                    borderRadius: '0.5rem',
+                                    border: '1px solid #475569',
+                                    backgroundColor: '#0f172a',
+                                    color: 'white',
+                                    outline: 'none'
+                                }}
+                            />
+                        </div>
                         <button
                             type="submit"
                             style={{
@@ -196,10 +225,11 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
                                 border: 'none',
                                 borderRadius: '0.5rem',
                                 fontWeight: 600,
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                marginTop: '0.5rem'
                             }}
                         >
-                            Save
+                            Save & Continue
                         </button>
                     </form>
                     <button
@@ -364,6 +394,25 @@ const AddressInput = ({ onAddressSelect, onSwitchToUpload }) => {
                 >
                     <ImageIcon size={18} />
                     Upload a Photo Instead
+                </button>
+            </div>
+
+            <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                <button
+                    onClick={() => setShowKeyInput(true)}
+                    style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#64748b',
+                        fontSize: '0.75rem',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                    }}
+                >
+                    <Settings size={12} />
+                    Configure API Keys
                 </button>
             </div>
         </div>
