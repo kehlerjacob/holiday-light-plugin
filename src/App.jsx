@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ImageUploader from './components/ImageUploader';
+import AddressInput from './components/AddressInput';
 import LightSelector from './components/LightSelector';
 import PreviewCanvas from './components/PreviewCanvas';
 import { X } from 'lucide-react';
@@ -7,6 +8,7 @@ import { X } from 'lucide-react';
 function App({ onClose }) {
   const [image, setImage] = useState(null);
   const [selectedLight, setSelectedLight] = useState(null);
+  const [mode, setMode] = useState('address'); // 'address' or 'upload'
 
   return (
     // Fully opaque black background
@@ -84,12 +86,36 @@ function App({ onClose }) {
                   fontSize: '1.25rem',
                   fontWeight: 'bold',
                   color: '#ffffff',
-                  marginBottom: '0.5rem'
+                  marginBottom: '2rem'
                 }}
               >
                 Preview Holiday Lights
               </h2>
-              <ImageUploader onImageSelect={setImage} />
+
+              {mode === 'address' ? (
+                <AddressInput
+                  onAddressSelect={setImage}
+                  onSwitchToUpload={() => setMode('upload')}
+                />
+              ) : (
+                <>
+                  <ImageUploader onImageSelect={setImage} />
+                  <button
+                    onClick={() => setMode('address')}
+                    style={{
+                      marginTop: '1rem',
+                      background: 'none',
+                      border: 'none',
+                      color: '#94a3b8',
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem'
+                    }}
+                  >
+                    Back to Address Search
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%' }}>
