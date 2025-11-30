@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { Loader } from 'lucide-react';
 
 // C9 Bulb Component - Inverted (Socket at top)
 const C9Bulb = ({ color, glow }) => {
@@ -348,22 +349,114 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
 
     // ... existing code ...
 
-    const simulateAIGeneration = () => {
-        // Mock AI generation: Find rooflines (simplified as top edge for now)
-        // In a real app, this would call Replicate API
-        const width = containerSize.width;
-        const height = containerSize.height;
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [aiImage, setAiImage] = useState(null);
+    const [generationError, setGenerationError] = useState(null);
 
-        // Create a "roofline" shape
-        const roofPoints = [
-            { x: 10, y: 40 },
-            { x: 50, y: 20 },
-            { x: 90, y: 40 }
-        ];
+    // Generate a black and white mask from the drawn lines
+    const generateControlMask = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = containerSize.width;
+        canvas.height = containerSize.height;
+        const ctx = canvas.getContext('2d');
 
-        setLines([roofPoints]);
-        setShowLights(true);
-        setIsNightMode(true);
+        // Black background
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // White lines
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        lines.forEach(line => {
+            if (line.length < 2) return;
+            ctx.beginPath();
+            ctx.moveTo((line[0].x / 100) * canvas.width, (line[0].y / 100) * canvas.height);
+            for (let i = 1; i < line.length; i++) {
+                ctx.lineTo((line[i].x / 100) * canvas.width, (line[i].y / 100) * canvas.height);
+            }
+            ctx.stroke();
+        });
+
+        return canvas.toDataURL('image/png');
+    };
+
+    const handleGenerateAI = async () => {
+        const replicateKey = localStorage.getItem('replicate_api_token');
+        if (!replicateKey) {
+            alert("Please configure your Replicate API Key in the settings.");
+            return;
+        }
+
+        if (lines.length === 0) {
+            alert("Please draw some lines first!");
+            return;
+        }
+
+        setIsGenerating(true);
+        setGenerationError(null);
+        setAiImage(null);
+
+        try {
+            const mask = generateControlMask();
+
+            // 1. Create Prediction
+            const response = await fetch("https://api.replicate.com/v1/predictions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Token ${replicateKey}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    version: "435061a1b5a4c1e26740464bf786efdfa9cb3a3ac488595a2de23e143fdb0117", // ControlNet Scribble
+                    input: {
+                        image: image, // The street view image
+                        structure: "scribble", // Control mode
+                        prompt: "Professional photography of a house with glowing C9 Christmas lights on the roofline, night time, snowy, 8k, photorealistic, warm lighting",
+                        a_prompt: "best quality, extremely detailed",
+                        n_prompt: "longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality",
+                        scribble_map: mask, // The drawn lines
+                        scale: 9,
+                        ddim_steps: 20
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.detail || "Failed to start generation");
+            }
+
+            const prediction = await response.json();
+            const predictionId = prediction.id;
+
+            // 2. Poll for Result
+            const pollInterval = setInterval(async () => {
+                const statusRes = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
+                    headers: {
+                        "Authorization": `Token ${replicateKey}`,
+                    }
+                });
+                const statusData = await statusRes.json();
+
+                if (statusData.status === "succeeded") {
+                    clearInterval(pollInterval);
+                    setAiImage(statusData.output[1]); // Usually output is [control_image, generated_image]
+                    setIsGenerating(false);
+                } else if (statusData.status === "failed") {
+                    clearInterval(pollInterval);
+                    setGenerationError("AI Generation Failed");
+                    setIsGenerating(false);
+                }
+            }, 1000);
+
+        } catch (e) {
+            console.error(e);
+            setGenerationError(e.message);
+            setIsGenerating(false);
+        }
     };
 
     return (
@@ -389,16 +482,17 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                 }}
             >
                 {/* New AI Button */}
-                {!showLights && lines.length === 0 && (
+                {!showLights && lines.length > 0 && (
                     <button
-                        onClick={simulateAIGeneration}
+                        onClick={handleGenerateAI}
+                        disabled={isGenerating}
                         style={{
                             padding: '0.5rem 1rem',
-                            background: 'linear-gradient(to right, #8b5cf6, #ec4899)',
+                            background: isGenerating ? '#94a3b8' : 'linear-gradient(to right, #8b5cf6, #ec4899)',
                             color: 'white',
                             border: 'none',
                             borderRadius: '0.5rem',
-                            cursor: 'pointer',
+                            cursor: isGenerating ? 'wait' : 'pointer',
                             fontSize: '0.875rem',
                             fontWeight: 600,
                             display: 'flex',
@@ -407,7 +501,14 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                             boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)'
                         }}
                     >
-                        ✨ Auto-Generate Lights
+                        {isGenerating ? (
+                            <>
+                                <Loader size={16} className="animate-spin" />
+                                Generating...
+                            </>
+                        ) : (
+                            <>✨ Render with AI</>
+                        )}
                     </button>
                 )}
 
@@ -500,6 +601,25 @@ const PreviewCanvas = ({ image, selectedLight, onReset }) => {
                     }}
                     draggable={false}
                 />
+
+                {/* AI Generated Result Overlay */}
+                {aiImage && (
+                    <img
+                        src={aiImage}
+                        alt="AI Result"
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'contain',
+                            pointerEvents: 'none',
+                            zIndex: 10,
+                            animation: 'fadeIn 1s ease'
+                        }}
+                    />
+                )}
 
                 {/* Canvas overlay for lines */}
                 <div
